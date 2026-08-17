@@ -3,6 +3,10 @@ import BrowserChrome from './components/BrowserChrome';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import LastBookedBetWidget from './components/LastBookedBetWidget';
 import BetHistoryModal from './components/BetHistoryModal';
+import AuthModal from './components/AuthModal';
+import OddsGeneratorModal from './components/OddsGeneratorModal';
+import AdminDashboardModal from './components/AdminDashboardModal';
+import NotificationDrawer from './components/NotificationDrawer';
 
 export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://www.sportybet.com/ng/');
@@ -11,13 +15,24 @@ export default function App() {
   
   const [latestBet, setLatestBet] = useState(null);
   const [bookedBetsHistory, setBookedBetsHistory] = useState([]);
-  
+
+  // User & Auth State
+  const [user, setUser] = useState(null);
+
+  // Modals & Drawers State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isOddsModalOpen, setIsOddsModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  
+  // Notifications State
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const webviewRef = useRef(null);
 
-  // Initial setup & IPC listeners
+  // Initial load & IPC listeners
   useEffect(() => {
     // 1. Fetch booked bets history from SQLite DB
     if (window.betlens && window.betlens.getBookingHistory) {
@@ -29,7 +44,10 @@ export default function App() {
       });
     }
 
-    // 2. Listen for fixture click detection from webview
+    // 2. Fetch Notifications
+    loadNotifications(null);
+
+    // 3. Listen for fixture click detection from webview
     let unsubscribeFixture = () => {};
     if (window.betlens && window.betlens.onFixtureDetected) {
       unsubscribeFixture = window.betlens.onFixtureDetected((analytics) => {
@@ -40,22 +58,20 @@ export default function App() {
       });
     }
 
-    // 3. Listen for booking code detection from webview
+    // 4. Listen for booking code detection from webview
     let unsubscribeBooking = () => {};
     if (window.betlens && window.betlens.onBookingDetected) {
       unsubscribeBooking = window.betlens.onBookingDetected((savedBet) => {
         console.log('[BetLens Renderer] Booking code detected:', savedBet);
         setLatestBet(savedBet);
         setBookedBetsHistory(prev => [savedBet, ...prev.filter(b => b.code !== savedBet.code)]);
-        
-        // Auto-copy to clipboard
         if (window.betlens.copyToClipboard) {
           window.betlens.copyToClipboard(savedBet.code);
         }
       });
     }
 
-    // Demo Initial Fixture Analytics for demo
+    // Initial demo analytics load
     if (window.betlens && window.betlens.fetchFixtureAnalytics) {
       setIsLoadingAnalytics(true);
       window.betlens.fetchFixtureAnalytics('Arsenal', 'Chelsea', 'Premier League')
@@ -70,6 +86,24 @@ export default function App() {
       unsubscribeBooking();
     };
   }, []);
+
+  const loadNotifications = (userId) => {
+    if (window.betlens && window.betlens.getNotifications) {
+      window.betlens.getNotifications(userId).then(notifs => {
+        setNotifications(notifs || []);
+      });
+    }
+  };
+
+  const handleLoginSuccess = (userProfile) => {
+    setUser(userProfile);
+    loadNotifications(userProfile.id);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    loadNotifications(null);
+  };
 
   // Webview navigation helpers
   const handleNavigate = (url) => {
@@ -103,7 +137,7 @@ export default function App() {
     }
   };
 
-  // Webview lifecycle listeners
+  // Webview navigation listeners
   useEffect(() => {
     const webview = webviewRef.current;
     if (!webview) return;
@@ -122,8 +156,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans">
-      {/* 1. Top Browser Navigation Chrome */}
+    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
+      {/* 1. Top Navigation Chrome */}
       <BrowserChrome
         currentUrl={currentUrl}
         onNavigate={handleNavigate}
@@ -134,9 +168,16 @@ export default function App() {
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         bookedBetsCount={bookedBetsHistory.length}
+        user={user}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
+        onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        notificationsCount={notifications.length}
+        onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
       />
 
-      {/* 2. Last Booked Bet Banner Widget */}
+      {/* 2. Last Booked Bet Banner */}
       {latestBet && (
         <LastBookedBetWidget
           latestBet={latestBet}
@@ -144,7 +185,14 @@ export default function App() {
         />
       )}
 
-      {/* 3. Main Workspace Layout */}
+      {/* 3. Notifications Drawer */}
+      <NotificationDrawer
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        notifications={notifications}
+      />
+
+      {/* 4. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Electron Webview Browser Viewport */}
         <div className="flex-1 h-full relative bg-slate-900">
@@ -179,12 +227,47 @@ export default function App() {
         />
       </div>
 
-      {/* 4. Booked Bets History Modal */}
+      {/* 5. Modals */}
       <BetHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
         history={bookedBetsHistory}
         onCopyCode={handleCopyCode}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      <OddsGeneratorModal
+        isOpen={isOddsModalOpen}
+        onClose={() => setIsOddsModalOpen(false)}
+        user={user}
+        onCodeGenerated={(ticket) => {
+          setLatestBet({
+            code: ticket.code,
+            stake: '1,000.00',
+            bookmaker: ticket.platform,
+            timestamp: ticket.timestamp
+          });
+          setBookedBetsHistory(prev => [
+            { code: ticket.code, stake: '1,000.00', bookmaker: ticket.platform, timestamp: ticket.timestamp },
+            ...prev
+          ]);
+        }}
+        onCopyCode={handleCopyCode}
+        onOpenAuth={() => {
+          setIsOddsModalOpen(false);
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      <AdminDashboardModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        adminUser={user}
       />
     </div>
   );

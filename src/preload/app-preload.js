@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-
 const path = require('path');
 
 contextBridge.exposeInMainWorld('betlens', {
@@ -17,7 +16,7 @@ contextBridge.exposeInMainWorld('betlens', {
     return () => ipcRenderer.removeListener('booking-detected', listener);
   },
   
-  // API Calls to Main Process
+  // Analytics & Bets IPC
   fetchFixtureAnalytics: (homeTeam, awayTeam, league) => 
     ipcRenderer.invoke('analytics:fetch', { homeTeam, awayTeam, league }),
     
@@ -27,7 +26,33 @@ contextBridge.exposeInMainWorld('betlens', {
   copyToClipboard: (text) => 
     ipcRenderer.invoke('clipboard:copy', text),
     
-  // Session & App Status
   getSessionInfo: () => 
-    ipcRenderer.invoke('session:getInfo')
+    ipcRenderer.invoke('session:getInfo'),
+
+  // --- Auth & Supabase IPC ---
+  login: (phone, password) =>
+    ipcRenderer.invoke('auth:login', { phone, password }),
+
+  register: (phone, password) =>
+    ipcRenderer.invoke('auth:register', { phone, password }),
+
+  getProfile: (userId) =>
+    ipcRenderer.invoke('auth:getProfile', userId),
+
+  // --- Automated Odds Generator IPC ---
+  generateFreeOdds: (userId, platform, targetOdds) =>
+    ipcRenderer.invoke('odds:generate', { userId, platform, targetOdds }),
+
+  // --- Admin Dashboard & Notifications IPC ---
+  adminGetUsers: () =>
+    ipcRenderer.invoke('admin:getUsers'),
+
+  adminSetUserPlan: (userId, plan) =>
+    ipcRenderer.invoke('admin:setUserPlan', { userId, plan }),
+
+  adminSendNotification: (targetUserId, title, message) =>
+    ipcRenderer.invoke('admin:sendNotification', { targetUserId, title, message }),
+
+  getNotifications: (userId) =>
+    ipcRenderer.invoke('notifications:get', userId)
 });

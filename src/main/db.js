@@ -7,6 +7,10 @@ class BetLensDB {
     this.dbPath = null;
     this.fixturesCache = new Map();
     this.bookedBets = [];
+    this.users = [];
+    this.notifications = [];
+    this.generatedCodes = [];
+    this.activeUser = null;
   }
 
   init() {
@@ -20,13 +24,43 @@ class BetLensDB {
         if (data.fixtures) {
           Object.entries(data.fixtures).forEach(([k, v]) => this.fixturesCache.set(k, v));
         }
-        if (Array.isArray(data.bookedBets)) {
-          this.bookedBets = data.bookedBets;
-        }
-      } else {
+        if (Array.isArray(data.bookedBets)) this.bookedBets = data.bookedBets;
+        if (Array.isArray(data.users)) this.users = data.users;
+        if (Array.isArray(data.notifications)) this.notifications = data.notifications;
+        if (Array.isArray(data.generatedCodes)) this.generatedCodes = data.generatedCodes;
+      }
+
+      // Ensure Admin Account Exists (Phone: 09033675852 / Password: @Dherinosha1)
+      let admin = this.users.find(u => u.phone === '09033675852');
+      if (!admin) {
+        admin = {
+          id: 'usr_admin_master',
+          phone: '09033675852',
+          password: '@Dherinosha1',
+          role: 'admin',
+          plan: 'premium',
+          expiresAt: '2099-12-31T23:59:59.000Z',
+          codeGenerationsCount: 0,
+          createdAt: new Date().toISOString()
+        };
+        this.users.unshift(admin);
         this.save();
       }
-      console.log('[BetLens DB] SQLite/Persistent storage initialized at:', this.dbPath);
+
+      // Seed initial welcome notification for broadcast
+      if (this.notifications.length === 0) {
+        this.notifications.push({
+          id: 'notif_welcome',
+          userId: null, // broadcast to all
+          title: 'Welcome to BetLens Pro!',
+          message: 'Get free 2, 3, and 5 odds codes daily on SportyBet, Bet9ja, and 1xBet. Upgrade to Premium for ₦1,000/mo for unlimited access!',
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+        this.save();
+      }
+
+      console.log('[BetLens DB] Storage initialized with', this.users.length, 'users.');
     } catch (err) {
       console.error('[BetLens DB] Error initializing storage:', err);
     }
@@ -38,6 +72,9 @@ class BetLensDB {
       const data = {
         fixtures: Object.fromEntries(this.fixturesCache),
         bookedBets: this.bookedBets,
+        users: this.users,
+        notifications: this.notifications,
+        generatedCodes: this.generatedCodes,
         lastUpdated: new Date().toISOString()
       };
       fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 2), 'utf-8');
@@ -46,11 +83,107 @@ class BetLensDB {
     }
   }
 
+  // --- Auth & User Management ---
+  registerUser(phone, password) {
+    const cleanPhone = phone.trim();
+    const existing = this.users.find(u => u.phone === cleanPhone);
+    if (existing) {
+      return { success: false, error: 'Phone number already registered. Please login.' };
+    }
+
+    const newUser = {
+      id: 'usr_' + Date.now(),
+      phone: cleanPhone,
+      password: password.trim(),
+      role: cleanPhone === '09033675852' ? 'admin' : 'user',
+      plan: cleanPhone === '09033675852' ? 'premium' : 'free',
+      expiresAt: cleanPhone === '09033675852' ? '2099-12-31T23:59:59.000Z' : null,
+      codeGenerationsCount: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    this.users.push(newUser);
+    this.save();
+    return { success: true, user: this.sanitizeUser(newUser) };
+  }
+
+  loginUser(phone, password) {
+    const cleanPhone = phone.trim();
+    const cleanPass = password.trim();
+
+    const user = this.users.find(u => u.phone === cleanPhone && u.password === cleanPass);
+    if (!user) {
+      return { success: false, error: 'Invalid phone number or password.' };
+    }
+
+    this.activeUser = user;
+    return { success: true, user: this.sanitizeUser(user) };
+  }
+
+  getUserProfile(userId) {
+    const user = this.users.find(u => u.id === userId || u.phone === userId);
+    return user ? this.sanitizeUser(user) : null;
+  }
+
+  getAllUsers() {
+    return this.users.map(u => this.sanitizeUser(u));
+  }
+
+  setUserPlan(userId, plan) {
+    const user = this.users.find(u => u.id === userId || u.phone === userId);
+    if (user) {
+      user.plan = plan; // 'free' or 'premium'
+      if (plan === 'premium') {
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        user.expiresAt = nextMonth.toISOString();
+      } else {
+        user.expiresAt = null;
+      }
+      this.save();
+      return { success: true, user: this.sanitizeUser(user) };
+    }
+    return { success: false, error: 'User not found' };
+  }
+
+  incrementUserCodeCount(userId) {
+    const user = this.users.find(u => u.id === userId || u.phone === userId);
+    if (user) {
+      user.codeGenerationsCount = (user.codeGenerationsCount || 0) + 1;
+      this.save();
+      return user.codeGenerationsCount;
+    }
+    return 0;
+  }
+
+  sanitizeUser(user) {
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  // --- Notifications ---
+  addNotification(targetUserId, title, message) {
+    const notif = {
+      id: 'notif_' + Date.now(),
+      userId: targetUserId || null, // null = broadcast to all
+      title,
+      message,
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    this.notifications.unshift(notif);
+    this.save();
+    return notif;
+  }
+
+  getNotificationsForUser(userId) {
+    return this.notifications.filter(n => n.userId === null || n.userId === userId);
+  }
+
+  // --- Fixture Analytics Cache ---
   getFixtureAnalytics(cacheKey) {
     const cached = this.fixturesCache.get(cacheKey);
     if (!cached) return null;
-
-    // Cache valid for 6 hours
     const age = Date.now() - (cached.cachedAt || 0);
     if (age > 6 * 60 * 60 * 1000) {
       this.fixturesCache.delete(cacheKey);
@@ -61,15 +194,12 @@ class BetLensDB {
   }
 
   saveFixtureAnalytics(cacheKey, data) {
-    this.fixturesCache.set(cacheKey, {
-      cachedAt: Date.now(),
-      data
-    });
+    this.fixturesCache.set(cacheKey, { cachedAt: Date.now(), data });
     this.save();
   }
 
+  // --- Booked Bets History ---
   addBookedBet(bet) {
-    // Check if code already exists in top 10
     const exists = this.bookedBets.find(b => b.code === bet.code);
     if (!exists) {
       const betRecord = {
@@ -80,10 +210,7 @@ class BetLensDB {
         timestamp: bet.timestamp || new Date().toISOString()
       };
       this.bookedBets.unshift(betRecord);
-      // Keep last 100 bets
-      if (this.bookedBets.length > 100) {
-        this.bookedBets = this.bookedBets.slice(0, 100);
-      }
+      if (this.bookedBets.length > 100) this.bookedBets = this.bookedBets.slice(0, 100);
       this.save();
       return betRecord;
     }
