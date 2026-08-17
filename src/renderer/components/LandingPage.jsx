@@ -70,11 +70,11 @@ export default function LandingPage({ onOpenAuth }) {
           </div>
 
           <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
-            The Desktop Browser Built for <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">Smart Sports Betting</span>
+            The AI Sports Analyst Studio & <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">Match Intelligence Platform</span>
           </h2>
 
           <p className="text-slate-400 text-sm md:text-base leading-relaxed">
-            Browse SportyBet, Bet9ja, and 1xBet normally with persistent account login. Get real-time Poisson probabilities, head-to-head records, and automated <strong>2, 3, and 5 Odds</strong> booking codes.
+            Analyze any match fixture, evaluate market odds risk, calculate exact Poisson win probabilities, and receive AI smart alternative recommendations before placing any bet on SportyBet, Bet9ja, or 1xBet.
           </p>
 
           {/* Action CTAs */}
