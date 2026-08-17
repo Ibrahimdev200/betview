@@ -1,5 +1,6 @@
 import React from 'react';
 import PredictionCard from './PredictionCard';
+import SelectedOddsRecommendationCard from './SelectedOddsRecommendationCard';
 import FormBadge from './FormBadge';
 import H2HCard from './H2HCard';
 import StandingsCard from './StandingsCard';
@@ -77,6 +78,13 @@ export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen
 
       {/* Scrollable Analytics List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Selected Odds AI Advisor & Recommendation Card */}
+        <SelectedOddsRecommendationCard
+          selectedMarket={analytics.selectedMarket}
+          fixture={fixture}
+          prediction={prediction}
+        />
+
         {/* Prediction Engine Card */}
         <PredictionCard 
           prediction={prediction} 
