@@ -205,7 +205,7 @@ export default function App() {
 
       {/* 4. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Browser Viewport (Native Webview in Electron Desktop App, Live Analytics Hub in Web Browser) */}
+        {/* Browser Viewport (Native Webview in Electron Desktop App, In-App Embedded Frame in Web Mode) */}
         <div className="flex-1 h-full relative bg-slate-900 overflow-hidden flex flex-col">
           {typeof window !== 'undefined' && (navigator.userAgent.toLowerCase().includes('electron') || window.process?.versions?.electron) ? (
             <webview
@@ -217,101 +217,89 @@ export default function App() {
               allowpopups="true"
             />
           ) : (
-            <div className="w-full h-full p-6 md:p-8 flex flex-col justify-between overflow-y-auto bg-slate-950/90 relative">
-              {/* Top Banner */}
-              <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/60 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center shrink-0">
-                    <Globe className="w-5 h-5 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-                      <span>Live Platform Browser</span>
-                      <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-mono px-2 py-0.5 rounded border border-cyan-500/30">Web Mode</span>
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Access target sports betting sites below or use the AI Odds Generator to get instant 2, 3 & 5 odds codes.</p>
-                  </div>
+            <div className="w-full h-full flex flex-col bg-slate-950 relative overflow-hidden">
+              {/* In-App Platform Bar */}
+              <div className="h-10 bg-slate-900/90 border-b border-slate-800 px-4 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="text-slate-400 text-[11px]">Active In-App Frame:</span>
+                  <span className="text-cyan-400 font-bold bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60">{currentUrl}</span>
                 </div>
-                <button
-                  onClick={() => setIsOddsModalOpen(true)}
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 flex items-center gap-2 shrink-0 transition-all"
-                >
-                  <Sparkles className="w-4 h-4 fill-slate-950" />
-                  <span>Get Free Bet Code</span>
-                </button>
-              </div>
-
-              {/* Bookmaker Launch Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
-                {/* SportyBet */}
-                <div className="bg-slate-900/90 border border-slate-800 hover:border-red-500/50 p-6 rounded-2xl flex flex-col justify-between transition-all group shadow-lg">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="bg-red-950/80 border border-red-500/40 text-red-400 text-xs font-black px-3 py-1 rounded-lg">SportyBet</span>
-                      <span className="text-[11px] text-slate-500 font-mono">NG / GH / KE</span>
-                    </div>
-                    <h4 className="font-extrabold text-base text-white mb-1 group-hover:text-red-400 transition-colors">SportyBet Nigeria</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">Browse live matches, sports fixtures, and analyze statistical predictions in real time.</p>
-                  </div>
-                  <a
-                    href="https://www.sportybet.com/ng/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 w-full bg-slate-800 hover:bg-red-600 text-white font-bold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-2 transition-all"
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    onClick={() => handleNavigate('https://www.sportybet.com/ng/')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all border ${
+                      currentUrl.includes('sportybet') 
+                        ? 'bg-red-500/20 text-red-400 border-red-500/40' 
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
                   >
-                    <span>Open SportyBet</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </a>
-                </div>
-
-                {/* Bet9ja */}
-                <div className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 p-6 rounded-2xl flex flex-col justify-between transition-all group shadow-lg">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-xs font-black px-3 py-1 rounded-lg">Bet9ja</span>
-                      <span className="text-[11px] text-slate-500 font-mono">Official Partner</span>
-                    </div>
-                    <h4 className="font-extrabold text-base text-white mb-1 group-hover:text-emerald-400 transition-colors">Bet9ja Nigeria</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">Access Premier League, Champions League, and book odds tickets directly.</p>
-                  </div>
-                  <a
-                    href="https://www.bet9ja.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 w-full bg-slate-800 hover:bg-emerald-600 text-white font-bold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-2 transition-all"
+                    SportyBet
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('https://www.bet9ja.com/')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all border ${
+                      currentUrl.includes('bet9ja') 
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' 
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
                   >
-                    <span>Open Bet9ja</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </a>
-                </div>
-
-                {/* 1xBet */}
-                <div className="bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 p-6 rounded-2xl flex flex-col justify-between transition-all group shadow-lg">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 text-xs font-black px-3 py-1 rounded-lg">1xBet</span>
-                      <span className="text-[11px] text-slate-500 font-mono">Global Odds</span>
-                    </div>
-                    <h4 className="font-extrabold text-base text-white mb-1 group-hover:text-cyan-400 transition-colors">1xBet Platform</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">Global markets, high odds boost selections, and automatic slip booking.</p>
-                  </div>
-                  <a
-                    href="https://1xbet.com/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 w-full bg-slate-800 hover:bg-cyan-600 text-white font-bold text-xs py-2.5 rounded-xl text-center flex items-center justify-center gap-2 transition-all"
+                    Bet9ja
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('https://1xbet.com/')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all border ${
+                      currentUrl.includes('1xbet') 
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40' 
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
                   >
-                    <span>Open 1xBet</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </a>
+                    1xBet
+                  </button>
                 </div>
               </div>
 
-              {/* Desktop App Download Note */}
-              <div className="bg-slate-900/60 border border-slate-800/80 p-4 rounded-xl flex items-center justify-between text-xs text-slate-400">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  <span>Tip: Install the <strong>BetLens Desktop App</strong> to enable embedded webview side-by-side analytics scraping!</span>
+              {/* In-App Web Viewport Frame */}
+              <div className="flex-1 w-full h-full relative bg-slate-900 overflow-hidden flex flex-col">
+                <iframe
+                  src={currentUrl}
+                  className="w-full h-full border-none bg-slate-900"
+                  title="BetLens Platform Viewport"
+                  allow="fullscreen; autoplay; clipboard-write; encrypted-media"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+                />
+
+                {/* Quick Platform Access Hub Overlay (In-App) */}
+                <div className="bg-slate-950 border-t border-slate-800 p-4 shrink-0 flex flex-wrap items-center justify-between gap-3 z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-white">BetLens Workspace Viewport</h4>
+                      <p className="text-[11px] text-slate-400">Viewing active bookmaker inside BetLens workspace. Click fixture matches to view real-time Poisson analytics on the right panel.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleNavigate('https://www.sportybet.com/ng/')}
+                      className="bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                    >
+                      <span>Load SportyBet In-App</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('https://www.bet9ja.com/')}
+                      className="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                    >
+                      <span>Load Bet9ja In-App</span>
+                    </button>
+                    <button
+                      onClick={() => handleNavigate('https://1xbet.com/')}
+                      className="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                    >
+                      <span>Load 1xBet In-App</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
