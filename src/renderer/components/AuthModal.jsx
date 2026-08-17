@@ -147,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. 09033675852 or 08012345678"
+                placeholder="e.g. 08012345678"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
                 required
               />

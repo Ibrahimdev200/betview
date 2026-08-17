@@ -73,7 +73,7 @@ export default function AdminDashboardModal({ isOpen, onClose, adminUser }) {
               <h3 className="font-extrabold text-base text-white flex items-center gap-2">
                 <span>Master Admin Control Center</span>
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded">
-                  09033675852
+                  {adminUser?.phone || 'MASTER ADMIN'}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">User Subscriptions & Member Notification Management</p>
