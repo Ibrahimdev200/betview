@@ -7,6 +7,7 @@ import AuthModal from './components/AuthModal';
 import OddsGeneratorModal from './components/OddsGeneratorModal';
 import AdminDashboardModal from './components/AdminDashboardModal';
 import NotificationDrawer from './components/NotificationDrawer';
+import LandingPage from './components/LandingPage';
 
 export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://www.sportybet.com/ng/');
@@ -23,6 +24,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [isOddsModalOpen, setIsOddsModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   
@@ -105,6 +107,11 @@ export default function App() {
     loadNotifications(null);
   };
 
+  const handleOpenAuth = (mode = 'login') => {
+    setAuthMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
   // Webview navigation helpers
   const handleNavigate = (url) => {
     setCurrentUrl(url);
@@ -155,6 +162,22 @@ export default function App() {
     };
   }, []);
 
+  // If user is not logged in, render the Landing Page
+  if (!user) {
+    return (
+      <>
+        <LandingPage onOpenAuth={handleOpenAuth} />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+          initialMode={authMode}
+        />
+      </>
+    );
+  }
+
+  // Authenticated Dashboard & Desktop Browser Shell
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
       {/* 1. Top Navigation Chrome */}
@@ -169,7 +192,7 @@ export default function App() {
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         bookedBetsCount={bookedBetsHistory.length}
         user={user}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => handleOpenAuth('login')}
         onLogout={handleLogout}
         onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
@@ -239,6 +262,7 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        initialMode={authMode}
       />
 
       <OddsGeneratorModal
@@ -260,7 +284,7 @@ export default function App() {
         onCopyCode={handleCopyCode}
         onOpenAuth={() => {
           setIsOddsModalOpen(false);
-          setIsAuthModalOpen(true);
+          handleOpenAuth('login');
         }}
       />
 
