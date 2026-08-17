@@ -16,6 +16,7 @@ import {
   Layers
 } from 'lucide-react';
 import heroImage from '../assets/hero-banner.jpg';
+import logoImg from '../assets/logo.jpg';
 
 export default function LandingPage({ onOpenAuth }) {
   return (
@@ -23,8 +24,8 @@ export default function LandingPage({ onOpenAuth }) {
       {/* 1. Header Bar */}
       <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 md:px-12 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
-            <Sparkles className="w-6 h-6 text-white" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-cyan-500/40 shadow-lg shadow-cyan-500/25 shrink-0">
+            <img src={logoImg} alt="BetLens Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="font-extrabold text-base text-white tracking-wide leading-none">BetLens</h1>

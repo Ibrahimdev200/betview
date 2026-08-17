@@ -17,6 +17,7 @@ import {
   LogOut,
   LogIn
 } from 'lucide-react';
+import logoImg from '../assets/logo.jpg';
 
 export default function BrowserChrome({ 
   currentUrl, 
@@ -64,11 +65,11 @@ export default function BrowserChrome({
     <header className="h-14 bg-slate-900 border-b border-slate-800/80 px-3 flex items-center justify-between gap-2 shadow-md z-30 select-none">
       {/* Brand & Logo */}
       <div className="flex items-center gap-2 pr-2 border-r border-slate-800 shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-          <Sparkles className="w-5 h-5 text-white" />
+        <div className="w-9 h-9 rounded-lg overflow-hidden border border-cyan-500/40 shadow-lg shadow-cyan-500/20 shrink-0">
+          <img src={logoImg} alt="BetLens Logo" className="w-full h-full object-cover" />
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-sm text-white tracking-wider leading-none">BetLens</span>
+          <span className="font-extrabold text-sm text-white tracking-wider leading-none">BetLens</span>
           <span className="text-[10px] text-cyan-400 font-medium tracking-tight">Desktop Analytics</span>
         </div>
       </div>
