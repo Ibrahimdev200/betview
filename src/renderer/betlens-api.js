@@ -3,6 +3,9 @@
 const LOCAL_USERS_KEY = 'betlens_web_users_db';
 const LOCAL_NOTIFS_KEY = 'betlens_web_notifications_db';
 
+// Capture native Electron IPC object if injected by app-preload.js
+const nativeBetlens = (typeof window !== 'undefined' && window.betlens && window.betlens.login && window.betlens !== undefined) ? window.betlens : null;
+
 function getWebUsers() {
   try {
     const raw = localStorage.getItem(LOCAL_USERS_KEY);
@@ -55,23 +58,23 @@ function saveWebNotifications(notifs) {
 const betlensApi = {
   // Navigation & Shell IPC
   onFixtureDetected: (callback) => {
-    if (window.betlens && window.betlens.onFixtureDetected) {
-      return window.betlens.onFixtureDetected(callback);
+    if (nativeBetlens && nativeBetlens.onFixtureDetected) {
+      return nativeBetlens.onFixtureDetected(callback);
     }
     return () => {};
   },
 
   onBookingDetected: (callback) => {
-    if (window.betlens && window.betlens.onBookingDetected) {
-      return window.betlens.onBookingDetected(callback);
+    if (nativeBetlens && nativeBetlens.onBookingDetected) {
+      return nativeBetlens.onBookingDetected(callback);
     }
     return () => {};
   },
 
   fetchFixtureAnalytics: async (homeTeam, awayTeam, league) => {
-    if (window.betlens && window.betlens.fetchFixtureAnalytics) {
+    if (nativeBetlens && nativeBetlens.fetchFixtureAnalytics) {
       try {
-        return await window.betlens.fetchFixtureAnalytics(homeTeam, awayTeam, league);
+        return await nativeBetlens.fetchFixtureAnalytics(homeTeam, awayTeam, league);
       } catch (e) {}
     }
     // Web fallback calculation
@@ -94,18 +97,18 @@ const betlensApi = {
   },
 
   getBookingHistory: async () => {
-    if (window.betlens && window.betlens.getBookingHistory) {
+    if (nativeBetlens && nativeBetlens.getBookingHistory) {
       try {
-        return await window.betlens.getBookingHistory();
+        return await nativeBetlens.getBookingHistory();
       } catch (e) {}
     }
     return [];
   },
 
   copyToClipboard: async (text) => {
-    if (window.betlens && window.betlens.copyToClipboard) {
+    if (nativeBetlens && nativeBetlens.copyToClipboard) {
       try {
-        return await window.betlens.copyToClipboard(text);
+        return await nativeBetlens.copyToClipboard(text);
       } catch (e) {}
     }
     try {
@@ -122,9 +125,9 @@ const betlensApi = {
     const cleanPass = password.trim();
 
     // 1. Try Desktop Electron IPC if available
-    if (window.betlens && window.betlens.login) {
+    if (nativeBetlens && nativeBetlens.login) {
       try {
-        const res = await window.betlens.login(cleanPhone, cleanPass);
+        const res = await nativeBetlens.login(cleanPhone, cleanPass);
         if (res && res.success) return res;
       } catch (e) {
         console.warn('[BetLens API] Electron login IPC failed, using Web Fallback:', e);
@@ -169,9 +172,9 @@ const betlensApi = {
     const cleanPass = password.trim();
 
     // 1. Try Desktop Electron IPC if available
-    if (window.betlens && window.betlens.register) {
+    if (nativeBetlens && nativeBetlens.register) {
       try {
-        const res = await window.betlens.register(cleanPhone, cleanPass);
+        const res = await nativeBetlens.register(cleanPhone, cleanPass);
         if (res && res.success) return res;
       } catch (e) {
         console.warn('[BetLens API] Electron register IPC failed, using Web Fallback:', e);
@@ -215,9 +218,9 @@ const betlensApi = {
   },
 
   getProfile: async (userId) => {
-    if (window.betlens && window.betlens.getProfile) {
+    if (nativeBetlens && nativeBetlens.getProfile) {
       try {
-        return await window.betlens.getProfile(userId);
+        return await nativeBetlens.getProfile(userId);
       } catch (e) {}
     }
     const users = getWebUsers();
@@ -226,9 +229,9 @@ const betlensApi = {
 
   // --- Automated Odds Generator ---
   generateFreeOdds: async (userId, platform, targetOdds) => {
-    if (window.betlens && window.betlens.generateFreeOdds) {
+    if (nativeBetlens && nativeBetlens.generateFreeOdds) {
       try {
-        return await window.betlens.generateFreeOdds(userId, platform, targetOdds);
+        return await nativeBetlens.generateFreeOdds(userId, platform, targetOdds);
       } catch (e) {}
     }
 
@@ -255,18 +258,18 @@ const betlensApi = {
 
   // --- Admin Dashboard IPC ---
   adminGetUsers: async () => {
-    if (window.betlens && window.betlens.adminGetUsers) {
+    if (nativeBetlens && nativeBetlens.adminGetUsers) {
       try {
-        return await window.betlens.adminGetUsers();
+        return await nativeBetlens.adminGetUsers();
       } catch (e) {}
     }
     return getWebUsers();
   },
 
   adminSetUserPlan: async (userId, plan) => {
-    if (window.betlens && window.betlens.adminSetUserPlan) {
+    if (nativeBetlens && nativeBetlens.adminSetUserPlan) {
       try {
-        return await window.betlens.adminSetUserPlan(userId, plan);
+        return await nativeBetlens.adminSetUserPlan(userId, plan);
       } catch (e) {}
     }
     const users = getWebUsers();
@@ -279,9 +282,9 @@ const betlensApi = {
   },
 
   adminSendNotification: async (targetUserId, title, message) => {
-    if (window.betlens && window.betlens.adminSendNotification) {
+    if (nativeBetlens && nativeBetlens.adminSendNotification) {
       try {
-        return await window.betlens.adminSendNotification(targetUserId, title, message);
+        return await nativeBetlens.adminSendNotification(targetUserId, title, message);
       } catch (e) {}
     }
     const notifs = getWebNotifications();
@@ -298,9 +301,9 @@ const betlensApi = {
   },
 
   getNotifications: async (userId) => {
-    if (window.betlens && window.betlens.getNotifications) {
+    if (nativeBetlens && nativeBetlens.getNotifications) {
       try {
-        return await window.betlens.getNotifications(userId);
+        return await nativeBetlens.getNotifications(userId);
       } catch (e) {}
     }
     const notifs = getWebNotifications();
@@ -308,9 +311,9 @@ const betlensApi = {
   }
 };
 
-// Ensure window.betlens is initialized on all platforms
+// Ensure window.betlens is safely initialized
 if (typeof window !== 'undefined') {
-  window.betlens = window.betlens ? { ...betlensApi, ...window.betlens } : betlensApi;
+  window.betlens = betlensApi;
 }
 
 export default betlensApi;
