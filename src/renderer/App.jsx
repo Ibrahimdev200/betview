@@ -8,6 +8,7 @@ import OddsGeneratorModal from './components/OddsGeneratorModal';
 import AdminDashboardModal from './components/AdminDashboardModal';
 import NotificationDrawer from './components/NotificationDrawer';
 import LandingPage from './components/LandingPage';
+import betlensApi from './betlens-api';
 
 export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://www.sportybet.com/ng/');
@@ -36,65 +37,51 @@ export default function App() {
 
   // Initial load & IPC listeners
   useEffect(() => {
-    // 1. Fetch booked bets history from SQLite DB
-    if (window.betlens && window.betlens.getBookingHistory) {
-      window.betlens.getBookingHistory().then(history => {
-        if (history && history.length > 0) {
-          setBookedBetsHistory(history);
-          setLatestBet(history[0]);
-        }
-      });
-    }
+    // 1. Fetch booked bets history
+    betlensApi.getBookingHistory().then(history => {
+      if (history && history.length > 0) {
+        setBookedBetsHistory(history);
+        setLatestBet(history[0]);
+      }
+    });
 
     // 2. Fetch Notifications
     loadNotifications(null);
 
     // 3. Listen for fixture click detection from webview
-    let unsubscribeFixture = () => {};
-    if (window.betlens && window.betlens.onFixtureDetected) {
-      unsubscribeFixture = window.betlens.onFixtureDetected((analytics) => {
-        console.log('[BetLens Renderer] Fixture analytics received:', analytics);
-        setAnalyticsData(analytics);
-        setIsLoadingAnalytics(false);
-        setIsSidebarOpen(true);
-      });
-    }
+    const unsubscribeFixture = betlensApi.onFixtureDetected((analytics) => {
+      console.log('[BetLens Renderer] Fixture analytics received:', analytics);
+      setAnalyticsData(analytics);
+      setIsLoadingAnalytics(false);
+      setIsSidebarOpen(true);
+    });
 
     // 4. Listen for booking code detection from webview
-    let unsubscribeBooking = () => {};
-    if (window.betlens && window.betlens.onBookingDetected) {
-      unsubscribeBooking = window.betlens.onBookingDetected((savedBet) => {
-        console.log('[BetLens Renderer] Booking code detected:', savedBet);
-        setLatestBet(savedBet);
-        setBookedBetsHistory(prev => [savedBet, ...prev.filter(b => b.code !== savedBet.code)]);
-        if (window.betlens.copyToClipboard) {
-          window.betlens.copyToClipboard(savedBet.code);
-        }
-      });
-    }
+    const unsubscribeBooking = betlensApi.onBookingDetected((savedBet) => {
+      console.log('[BetLens Renderer] Booking code detected:', savedBet);
+      setLatestBet(savedBet);
+      setBookedBetsHistory(prev => [savedBet, ...prev.filter(b => b.code !== savedBet.code)]);
+      betlensApi.copyToClipboard(savedBet.code);
+    });
 
     // Initial demo analytics load
-    if (window.betlens && window.betlens.fetchFixtureAnalytics) {
-      setIsLoadingAnalytics(true);
-      window.betlens.fetchFixtureAnalytics('Arsenal', 'Chelsea', 'Premier League')
-        .then(data => {
-          setAnalyticsData(data);
-          setIsLoadingAnalytics(false);
-        });
-    }
+    setIsLoadingAnalytics(true);
+    betlensApi.fetchFixtureAnalytics('Arsenal', 'Chelsea', 'Premier League')
+      .then(data => {
+        setAnalyticsData(data);
+        setIsLoadingAnalytics(false);
+      });
 
     return () => {
-      unsubscribeFixture();
-      unsubscribeBooking();
+      if (typeof unsubscribeFixture === 'function') unsubscribeFixture();
+      if (typeof unsubscribeBooking === 'function') unsubscribeBooking();
     };
   }, []);
 
   const loadNotifications = (userId) => {
-    if (window.betlens && window.betlens.getNotifications) {
-      window.betlens.getNotifications(userId).then(notifs => {
-        setNotifications(notifs || []);
-      });
-    }
+    betlensApi.getNotifications(userId).then(notifs => {
+      setNotifications(notifs || []);
+    });
   };
 
   const handleLoginSuccess = (userProfile) => {

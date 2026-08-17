@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, Ticket, Copy, Check, ShieldAlert, Award, X, Zap, ChevronRight, Crown } from 'lucide-react';
+import betlensApi from '../betlens-api';
 
 export default function OddsGeneratorModal({ isOpen, onClose, user, onCodeGenerated, onCopyCode, onOpenAuth }) {
   const [platform, setPlatform] = useState('SportyBet');
@@ -28,12 +29,12 @@ export default function OddsGeneratorModal({ isOpen, onClose, user, onCodeGenera
     setLoading(true);
 
     try {
-      const res = await window.betlens.generateFreeOdds(user.id, platform, targetOdds);
-      if (res.success) {
+      const res = await betlensApi.generateFreeOdds(user.id, platform, targetOdds);
+      if (res && res.success) {
         setGeneratedTicket(res.ticket);
         if (onCodeGenerated) onCodeGenerated(res.ticket);
       } else {
-        setError(res.error || 'Failed to generate booking code.');
+        setError(res?.error || 'Failed to generate booking code.');
       }
     } catch (err) {
       setError('Error generating booking code. Please try again.');

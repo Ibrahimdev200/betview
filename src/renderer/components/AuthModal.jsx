@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Phone, Lock, LogIn, UserPlus, Sparkles, X, AlertCircle, CheckCircle } from 'lucide-react';
+import betlensApi from '../betlens-api';
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode = 'login' }) {
   const [isRegister, setIsRegister] = useState(initialMode === 'register');
@@ -44,32 +45,32 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess, initialMode
     try {
       if (isRegister) {
         // Registration Flow
-        const res = await window.betlens.register(cleanPhone, cleanPass);
-        if (res.success) {
+        const res = await betlensApi.register(cleanPhone, cleanPass);
+        if (res && res.success) {
           setSuccessMsg('Account created successfully! Logging you in...');
           setTimeout(() => {
             onLoginSuccess(res.user);
             onClose();
           }, 800);
         } else {
-          setError(res.error || 'Registration failed. Phone number may already be registered.');
+          setError(res?.error || 'Registration failed. Phone number may already be registered.');
         }
       } else {
         // Login Flow
-        const res = await window.betlens.login(cleanPhone, cleanPass);
-        if (res.success) {
+        const res = await betlensApi.login(cleanPhone, cleanPass);
+        if (res && res.success) {
           setSuccessMsg('Login successful!');
           setTimeout(() => {
             onLoginSuccess(res.user);
             onClose();
           }, 500);
         } else {
-          setError(res.error || 'Invalid phone number or password. Check credentials or register a new account.');
+          setError(res?.error || 'Invalid phone number or password. Check credentials or register a new account.');
         }
       }
     } catch (err) {
       console.error('Auth error:', err);
-      setError('Connection error. Please try again.');
+      setError('Authentication failed. Please verify your details and try again.');
     } finally {
       setLoading(false);
     }

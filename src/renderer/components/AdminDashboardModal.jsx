@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Users, Crown, Send, RefreshCw, X, AlertCircle, Check, Search, Bell } from 'lucide-react';
+import betlensApi from '../betlens-api';
 
 export default function AdminDashboardModal({ isOpen, onClose, adminUser }) {
   const [users, setUsers] = useState([]);
@@ -21,7 +22,7 @@ export default function AdminDashboardModal({ isOpen, onClose, adminUser }) {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = await window.betlens.adminGetUsers();
+      const data = await betlensApi.adminGetUsers();
       setUsers(data || []);
     } catch (err) {
       console.error('Error fetching admin users:', err);
@@ -34,8 +35,8 @@ export default function AdminDashboardModal({ isOpen, onClose, adminUser }) {
 
   const handleTogglePlan = async (userId, currentPlan) => {
     const newPlan = currentPlan === 'premium' ? 'free' : 'premium';
-    const res = await window.betlens.adminSetUserPlan(userId, newPlan);
-    if (res.success) {
+    const res = await betlensApi.adminSetUserPlan(userId, newPlan);
+    if (res && res.success) {
       setStatusMsg(`User status updated to ${newPlan.toUpperCase()}`);
       setTimeout(() => setStatusMsg(''), 3000);
       loadUsers();
@@ -47,7 +48,7 @@ export default function AdminDashboardModal({ isOpen, onClose, adminUser }) {
     if (!notifTitle || !notifMessage) return;
 
     const targetId = notifTarget === 'all' ? null : notifTarget;
-    const res = await window.betlens.adminSendNotification(targetId, notifTitle, notifMessage);
+    const res = await betlensApi.adminSendNotification(targetId, notifTitle, notifMessage);
     if (res) {
       setStatusMsg('Notification dispatched successfully!');
       setNotifTitle('');
