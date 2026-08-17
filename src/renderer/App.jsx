@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Globe, Sparkles, ChevronRight, Activity } from 'lucide-react';
 import BrowserChrome from './components/BrowserChrome';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import LastBookedBetWidget from './components/LastBookedBetWidget';
