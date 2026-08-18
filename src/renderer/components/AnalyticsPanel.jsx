@@ -5,9 +5,9 @@ import FormBadge from './FormBadge';
 import H2HCard from './H2HCard';
 import StandingsCard from './StandingsCard';
 import SquadNewsCard from './SquadNewsCard';
-import { Calendar, ShieldAlert, Sparkles, RefreshCw, BarChart2 } from 'lucide-react';
+import { Calendar, ShieldAlert, Sparkles, RefreshCw, BarChart2, MousePointerClick } from 'lucide-react';
 
-export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen }) {
+export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen, onApplyRecommendation }) {
   if (!isOpen) return null;
 
   if (isLoading) {
@@ -24,15 +24,21 @@ export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen
 
   if (!analytics || !analytics.fixture) {
     return (
-      <aside className="w-[380px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20">
-        <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600">
-          <BarChart2 className="w-7 h-7" />
+      <aside className="w-[380px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20 select-none">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400 shadow-xl relative">
+          <BarChart2 className="w-8 h-8" />
+          <MousePointerClick className="w-4 h-4 text-amber-400 absolute -bottom-1 -right-1 animate-bounce" />
         </div>
-        <div className="space-y-1">
-          <h4 className="text-sm font-bold text-slate-300">No Fixture Selected</h4>
-          <p className="text-xs text-slate-500 max-w-[240px]">
-            Click any match or fixture on SportyBet or Bet9ja to generate real-time analytics.
+        <div className="space-y-2 max-w-[260px]">
+          <h4 className="text-sm font-extrabold text-slate-200">No Bet Selected</h4>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Choose your betting site (<strong className="text-red-400">SportyBet</strong>, <strong className="text-emerald-400">Bet9ja</strong>, or <strong className="text-cyan-400">1xBet</strong>) and click any match or odds selection to view detailed analysis.
           </p>
+          <div className="pt-2 flex flex-col gap-1 text-[11px] font-mono text-slate-500">
+            <span className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">✅ GOOD BET detection</span>
+            <span className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">⚠️ BAD BET warning</span>
+            <span className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">⚡ UNDER PROBABILITY recommendations</span>
+          </div>
         </div>
       </aside>
     );
@@ -83,6 +89,7 @@ export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen
           selectedMarket={analytics.selectedMarket}
           fixture={fixture}
           prediction={prediction}
+          onApplyRecommendation={onApplyRecommendation}
         />
 
         {/* Prediction Engine Card */}
@@ -108,3 +115,4 @@ export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen
     </aside>
   );
 }
+

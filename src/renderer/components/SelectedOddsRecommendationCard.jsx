@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, AlertTriangle, ArrowRightLeft, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
+import { Sparkles, ShieldCheck, AlertTriangle, ArrowRightLeft, CheckCircle2, TrendingUp, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
 
 export default function SelectedOddsRecommendationCard({ selectedMarket, fixture, prediction, onApplyRecommendation }) {
   if (!fixture) return null;
@@ -17,141 +17,207 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
 
   // Compute probability based on market type
   let winProbability = 50;
-  if (activeSelection.type === 'home' || activeSelection.marketName?.includes('Home')) winProbability = homeWinProb;
-  else if (activeSelection.type === 'draw' || activeSelection.marketName?.includes('Draw')) winProbability = drawProb;
-  else if (activeSelection.type === 'away' || activeSelection.marketName?.includes('Away')) winProbability = awayWinProb;
-  else if (activeSelection.marketName?.includes('Over 1.5')) winProbability = 82;
-  else if (activeSelection.marketName?.includes('Over 2.5')) winProbability = 64;
-  else if (activeSelection.marketName?.includes('BTTS')) winProbability = 66;
+  if (activeSelection.type === 'home' || activeSelection.marketName?.includes('Home') || activeSelection.marketName?.includes('(1)')) {
+    winProbability = homeWinProb;
+  } else if (activeSelection.type === 'draw' || activeSelection.marketName?.includes('Draw') || activeSelection.marketName?.includes('(X)')) {
+    winProbability = drawProb;
+  } else if (activeSelection.type === 'away' || activeSelection.marketName?.includes('Away') || activeSelection.marketName?.includes('(2)')) {
+    winProbability = awayWinProb;
+  } else if (activeSelection.marketName?.includes('Over 1.5') || activeSelection.type === 'dc1x') {
+    winProbability = 82;
+  } else if (activeSelection.marketName?.includes('Over 2.5') || activeSelection.type === 'over25') {
+    winProbability = 64;
+  } else if (activeSelection.marketName?.includes('BTTS') || activeSelection.type === 'btts') {
+    winProbability = 66;
+  }
 
-  // Determine risk level
-  const isHighRisk = winProbability < 50;
-  const isModerate = winProbability >= 50 && winProbability < 68;
-  const isSafe = winProbability >= 68;
+  // Determine Bet Evaluation Category: GOOD, BAD, or UNDER PROBABILITY
+  let betStatus = 'GOOD'; // GOOD, BAD, UNDER_PROBABILITY
+  if (winProbability < 45) {
+    betStatus = 'BAD';
+  } else if (winProbability >= 45 && winProbability < 68) {
+    betStatus = 'UNDER_PROBABILITY';
+  } else {
+    betStatus = 'GOOD';
+  }
 
   // Generate Smart Alternative Recommendation
   let recommendation = {
-    betterMarket: 'Double Chance (1X)',
+    betterMarket: `${fixture.homeTeam} or Draw (1X)`,
     betterOdds: 1.25,
-    betterProb: homeWinProb + drawProb,
+    betterProb: Math.min(95, homeWinProb + drawProb),
     reason: `Combining Home Win (${homeWinProb}%) + Draw (${drawProb}%) increases winning probability to ${homeWinProb + drawProb}%.`
   };
 
-  if (activeSelection.marketName?.includes('Over 2.5')) {
+  if (activeSelection.marketName?.includes('Over 2.5') || activeSelection.type === 'over25') {
     recommendation = {
       betterMarket: 'Over 1.5 Goals',
       betterOdds: 1.35,
       betterProb: 84,
       reason: 'Over 1.5 Goals carries an 84% probability based on team expected goals (xG: 2.8 total).'
     };
-  } else if (activeSelection.type === 'away') {
+  } else if (activeSelection.type === 'away' || activeSelection.marketName?.includes('Away')) {
     recommendation = {
-      betterMarket: 'Away Win or Draw (X2)',
+      betterMarket: `${fixture.awayTeam} Win or Draw (X2)`,
       betterOdds: 1.40,
-      betterProb: awayWinProb + drawProb,
-      reason: `Away Double Chance (X2) boosts coverage to ${awayWinProb + drawProb}%.`
+      betterProb: Math.min(95, awayWinProb + drawProb),
+      reason: `Away Double Chance (X2) boosts your probability coverage to ${awayWinProb + drawProb}%.`
+    };
+  } else if (activeSelection.type === 'draw' || activeSelection.marketName?.includes('Draw')) {
+    recommendation = {
+      betterMarket: `${fixture.homeTeam} Draw No Bet (DNB)`,
+      betterOdds: 1.38,
+      betterProb: 78,
+      reason: 'Draw No Bet protects your stake if the match ends in a draw.'
     };
   }
 
   return (
     <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-xl border border-slate-800 p-4 shadow-xl space-y-3 relative overflow-hidden select-none">
-      {/* Glow highlight */}
+      {/* Glow highlight based on status */}
       <div className={`absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl pointer-events-none ${
-        isHighRisk ? 'bg-rose-500/15' : isModerate ? 'bg-amber-500/15' : 'bg-emerald-500/15'
+        betStatus === 'BAD' 
+          ? 'bg-rose-500/20' 
+          : betStatus === 'UNDER_PROBABILITY' 
+            ? 'bg-amber-500/20' 
+            : 'bg-emerald-500/20'
       }`} />
 
-      {/* Header */}
+      {/* Header & Status Badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center border ${
-            isHighRisk ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+            betStatus === 'BAD'
+              ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+              : betStatus === 'UNDER_PROBABILITY'
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
           }`}>
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-100 tracking-wide uppercase">Selection AI Advisor</h4>
-            <p className="text-[10px] text-slate-400">Live Odds Analysis & Risk Evaluation</p>
+            <h4 className="text-xs font-bold text-slate-100 tracking-wide uppercase">AI Bet Analysis Advisor</h4>
+            <p className="text-[10px] text-slate-400">Selected Bet Evaluation & AI Recommendation</p>
           </div>
         </div>
 
-        {/* Risk Badge */}
-        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-          isHighRisk 
-            ? 'bg-rose-950 text-rose-400 border-rose-800/80' 
-            : isModerate 
-              ? 'bg-amber-950 text-amber-400 border-amber-800/80' 
-              : 'bg-emerald-950 text-emerald-400 border-emerald-800/80'
+        {/* Status Badge: GOOD, BAD, or UNDER PROBABILITY */}
+        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border flex items-center gap-1 uppercase tracking-wide ${
+          betStatus === 'BAD'
+            ? 'bg-rose-950 text-rose-400 border-rose-800/80 shadow-rose-950/50'
+            : betStatus === 'UNDER_PROBABILITY'
+              ? 'bg-amber-950 text-amber-300 border-amber-800/80 shadow-amber-950/50'
+              : 'bg-emerald-950 text-emerald-400 border-emerald-800/80 shadow-emerald-950/50'
         }`}>
-          {isHighRisk ? <AlertTriangle className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-          <span>{isHighRisk ? 'HIGH RISK' : isModerate ? 'MODERATE RISK' : 'HIGH VALUE'}</span>
+          {betStatus === 'BAD' && <ThumbsDown className="w-3 h-3 text-rose-400" />}
+          {betStatus === 'UNDER_PROBABILITY' && <AlertCircle className="w-3 h-3 text-amber-400" />}
+          {betStatus === 'GOOD' && <ThumbsUp className="w-3 h-3 text-emerald-400" />}
+
+          <span>
+            {betStatus === 'BAD' ? 'BAD BET ⚠️' : betStatus === 'UNDER_PROBABILITY' ? 'UNDER PROBABILITY ⚡' : 'GOOD BET ✅'}
+          </span>
         </span>
       </div>
 
-      {/* Active Selection Details */}
-      <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
+      {/* Active Selection Banner */}
+      <div className="bg-slate-950/90 border border-slate-800 p-3 rounded-lg flex items-center justify-between">
         <div>
-          <span className="text-[10px] text-slate-400 font-mono block">YOUR CLICKED SELECTION:</span>
-          <span className="text-xs font-bold text-white">{activeSelection.marketName}</span>
+          <span className="text-[10px] text-slate-400 font-mono block">CLICKED SELECTION:</span>
+          <span className="text-xs font-extrabold text-white">{activeSelection.marketName}</span>
         </div>
         <div className="text-right">
-          <span className="text-[10px] text-slate-400 font-mono block">ODDS:</span>
-          <span className="text-xs font-extrabold text-cyan-400 font-mono">@{activeSelection.odds || '1.85'}</span>
+          <span className="text-[10px] text-slate-400 font-mono block">BOOKIE ODDS:</span>
+          <span className="text-xs font-black text-cyan-400 font-mono">@{activeSelection.odds || '1.85'}</span>
         </div>
       </div>
 
       {/* Win Probability Meter */}
-      <div className="space-y-1">
+      <div className="space-y-1 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
         <div className="flex justify-between text-[11px] font-semibold">
-          <span className="text-slate-300">Win Probability:</span>
-          <span className={isHighRisk ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+          <span className="text-slate-300">Statistical Win Probability:</span>
+          <span className={`font-bold font-mono ${
+            betStatus === 'BAD' ? 'text-rose-400' : betStatus === 'UNDER_PROBABILITY' ? 'text-amber-400' : 'text-emerald-400'
+          }`}>
             {winProbability}%
           </span>
         </div>
-        <div className="w-full h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+        <div className="w-full h-2.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden p-0.5">
           <div 
             style={{ width: `${winProbability}%` }}
-            className={`h-full transition-all duration-700 ${
-              isHighRisk ? 'bg-gradient-to-r from-rose-600 to-rose-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+            className={`h-full rounded-full transition-all duration-700 ${
+              betStatus === 'BAD' 
+                ? 'bg-gradient-to-r from-rose-600 to-rose-400' 
+                : betStatus === 'UNDER_PROBABILITY' 
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-400' 
+                  : 'bg-gradient-to-r from-emerald-600 to-emerald-400'
             }`}
           />
         </div>
       </div>
 
-      {/* AI Smart Recommendation (If high/moderate risk) */}
-      <div className="bg-gradient-to-r from-slate-900 to-cyan-950/40 border border-cyan-500/30 p-3 rounded-lg space-y-2">
-        <div className="flex items-center gap-1.5 text-cyan-400">
-          <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-[11px] font-extrabold tracking-wide uppercase">AI Better Pick Recommendation:</span>
-        </div>
-
-        <p className="text-[11px] text-slate-300 leading-relaxed">
-          Instead of picking <strong className="text-rose-300">{activeSelection.marketName}</strong>, AI recommends:
-        </p>
-
-        <div className="bg-slate-950 border border-cyan-500/40 p-2.5 rounded-lg flex items-center justify-between">
-          <div>
-            <span className="text-xs font-extrabold text-cyan-300 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
-              {recommendation.betterMarket}
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{recommendation.reason}</span>
-          </div>
-          <div className="text-right shrink-0 pl-2">
-            <span className="text-[10px] text-emerald-400 font-mono font-bold block">{recommendation.betterProb}% Win</span>
-            <span className="text-xs font-black text-amber-400 font-mono">@{recommendation.betterOdds}</span>
-          </div>
-        </div>
-
-        {onApplyRecommendation && (
-          <button
-            onClick={() => onApplyRecommendation(recommendation)}
-            className="w-full mt-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-xs py-1.5 rounded-lg shadow transition-all flex items-center justify-center gap-1.5"
-          >
-            <TrendingUp className="w-3.5 h-3.5 fill-slate-950" />
-            <span>Switch to AI Recommended Pick</span>
-          </button>
+      {/* Analysis Summary Explanation */}
+      <div className={`p-2.5 rounded-lg border text-xs leading-relaxed ${
+        betStatus === 'BAD'
+          ? 'bg-rose-950/40 border-rose-800/60 text-rose-200'
+          : betStatus === 'UNDER_PROBABILITY'
+            ? 'bg-amber-950/40 border-amber-800/60 text-amber-200'
+            : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-200'
+      }`}>
+        {betStatus === 'BAD' && (
+          <p>
+            <strong>Warning (Bad Bet):</strong> This selection carries high statistical risk with only a <strong>{winProbability}%</strong> calculated win chance. Placing this wager single without hedging is not recommended.
+          </p>
+        )}
+        {betStatus === 'UNDER_PROBABILITY' && (
+          <p>
+            <strong>Caution (Under Probability):</strong> The win probability of <strong>{winProbability}%</strong> is moderate. The bookmaker odds do not fully compensate for the risk involved.
+          </p>
+        )}
+        {betStatus === 'GOOD' && (
+          <p>
+            <strong>Excellent Pick (Good Bet):</strong> Strong statistical backing with <strong>{winProbability}%</strong> win probability and positive mathematical value against bookmaker odds.
+          </p>
         )}
       </div>
+
+      {/* AI Smart Recommendation (Provided if BAD or UNDER PROBABILITY) */}
+      {(betStatus === 'BAD' || betStatus === 'UNDER_PROBABILITY') && (
+        <div className="bg-gradient-to-r from-slate-900 to-cyan-950/60 border border-cyan-500/40 p-3 rounded-xl space-y-2.5 shadow-lg">
+          <div className="flex items-center gap-1.5 text-cyan-400">
+            <ArrowRightLeft className="w-4 h-4 shrink-0" />
+            <span className="text-[11px] font-extrabold tracking-wide uppercase">AI Recommended Safer Alternative:</span>
+          </div>
+
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Instead of <strong className="text-rose-300">{activeSelection.marketName}</strong>, AI recommends switching to:
+          </p>
+
+          <div className="bg-slate-950 border border-cyan-500/40 p-3 rounded-lg flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-xs font-extrabold text-cyan-300 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                {recommendation.betterMarket}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono block">{recommendation.reason}</span>
+            </div>
+            <div className="text-right shrink-0 pl-2">
+              <span className="text-[10px] text-emerald-400 font-mono font-black block">{recommendation.betterProb}% Win</span>
+              <span className="text-xs font-black text-amber-400 font-mono">@{recommendation.betterOdds}</span>
+            </div>
+          </div>
+
+          {onApplyRecommendation && (
+            <button
+              onClick={() => onApplyRecommendation(recommendation)}
+              className="w-full mt-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-xs py-2 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
+            >
+              <TrendingUp className="w-4 h-4 fill-slate-950" />
+              <span>Switch to AI Recommended Pick</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
