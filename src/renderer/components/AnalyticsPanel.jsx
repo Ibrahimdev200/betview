@@ -30,9 +30,9 @@ export default function AnalyticsPanel({ analytics, isLoading, onRefresh, isOpen
           <MousePointerClick className="w-4 h-4 text-amber-400 absolute -bottom-1 -right-1 animate-bounce" />
         </div>
         <div className="space-y-2 max-w-[260px]">
-          <h4 className="text-sm font-extrabold text-slate-200">No Bet Selected</h4>
+          <h4 className="text-sm font-extrabold text-slate-200">No Match Selected</h4>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Choose your betting site (<strong className="text-red-400">SportyBet</strong>, <strong className="text-emerald-400">Bet9ja</strong>, or <strong className="text-cyan-400">1xBet</strong>) and click any match or odds selection to view detailed analysis.
+            Click any daily game or odds market from the <strong className="text-cyan-400">API-Football Live Feed</strong> to evaluate win probability in real-time.
           </p>
           <div className="pt-2 flex flex-col gap-1 text-[11px] font-mono text-slate-500">
             <span className="bg-slate-900 border border-slate-800 px-2 py-1 rounded">✅ GOOD BET detection</span>

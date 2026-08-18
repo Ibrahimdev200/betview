@@ -87,43 +87,22 @@ export default function BrowserChrome({
         </button>
       </div>
 
-      {/* Address Bar */}
-      <form onSubmit={handleSubmit} className="flex-1 max-w-xl flex items-center">
-        <div className="w-full relative flex items-center">
-          <div className="absolute left-2.5 text-slate-500">
-            <Globe className="w-3.5 h-3.5" />
-          </div>
-          <input 
-            type="text" 
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="Enter URL (e.g. sportybet.com)"
-            className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg pl-8 pr-20 py-1.5 focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
-          />
-          <div className="absolute right-2 flex items-center">
-            <span className="text-[9px] text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-1.5 py-0.5 rounded flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              Auth Saved
+      {/* API-Football Connected Status Bar */}
+      <div className="flex-1 max-w-xl flex items-center">
+        <div className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-1.5 flex items-center justify-between font-mono">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-300 font-bold">API-Football v3 Live Engine</span>
+            <span className="text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800/60 hidden sm:inline">
+              v3.football.api-sports.io
             </span>
           </div>
-        </div>
-      </form>
 
-      {/* Presets */}
-      <div className="hidden lg:flex items-center gap-1">
-        {presets.map(p => (
-          <button
-            key={p.name}
-            onClick={() => onNavigate(p.url)}
-            className={`text-[11px] px-2 py-1 rounded-md transition-all font-medium border ${
-              currentUrl.includes(p.name.toLowerCase()) 
-                ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40 font-bold' 
-                : 'text-slate-400 hover:text-white bg-slate-950 border-slate-800'
-            }`}
-          >
-            {p.name}
-          </button>
-        ))}
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] text-emerald-400 font-bold">Key Connected</span>
+          </div>
+        </div>
       </div>
 
       {/* Action Buttons: "Get Free Code", Admin Button, Auth, Notifications */}

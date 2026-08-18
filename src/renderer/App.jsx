@@ -9,7 +9,7 @@ import OddsGeneratorModal from './components/OddsGeneratorModal';
 import AdminDashboardModal from './components/AdminDashboardModal';
 import NotificationDrawer from './components/NotificationDrawer';
 import LandingPage from './components/LandingPage';
-import BetSiteDisplay from './components/BetSiteDisplay';
+import DailyFixturesDisplay from './components/DailyFixturesDisplay';
 import betlensApi from './betlens-api';
 
 export default function App() {
@@ -245,11 +245,9 @@ export default function App() {
 
       {/* 4. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Actual Live Bet Site Display Area */}
+        {/* API-Football Daily Games & Odds Dashboard Area */}
         <div className="flex-1 h-full relative bg-slate-900 overflow-hidden flex flex-col">
-          <BetSiteDisplay
-            currentUrl={currentUrl}
-            onSelectSiteUrl={handleNavigate}
+          <DailyFixturesDisplay
             onSelectBet={handleSelectFixtureAndMarket}
             onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
           />
