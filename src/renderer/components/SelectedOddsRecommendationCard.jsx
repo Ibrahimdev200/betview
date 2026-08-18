@@ -1,8 +1,11 @@
-import React from 'react';
-import { Sparkles, ShieldCheck, AlertTriangle, ArrowRightLeft, CheckCircle2, TrendingUp, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, ShieldCheck, AlertTriangle, ArrowRightLeft, CheckCircle2, TrendingUp, ThumbsUp, ThumbsDown, AlertCircle, Volume2, VolumeX, Radio } from 'lucide-react';
 
 export default function SelectedOddsRecommendationCard({ selectedMarket, fixture, prediction, onApplyRecommendation }) {
   if (!fixture) return null;
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoVoiceEnabled, setAutoVoiceEnabled] = useState(true);
 
   // Default market if none selected
   const activeSelection = selectedMarket || {
@@ -72,6 +75,59 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
     };
   }
 
+  // Construct Voice Speech Script
+  const getSpeechScript = () => {
+    const matchName = `${fixture.homeTeam} versus ${fixture.awayTeam}`;
+    const selection = activeSelection.marketName;
+
+    if (betStatus === 'GOOD') {
+      return `BetLens Analysis for ${matchName}. You selected ${selection}. This is a Good Bet with ${winProbability} percent statistical win probability and strong value.`;
+    } else if (betStatus === 'BAD') {
+      return `BetLens Analysis for ${matchName}. Warning! You selected ${selection}. This is a Bad Bet with high risk and only ${winProbability} percent win chance. AI recommends switching to ${recommendation.betterMarket} for ${recommendation.betterProb} percent win probability.`;
+    } else {
+      return `BetLens Analysis for ${matchName}. Caution! You selected ${selection}. This bet is Under Probability at ${winProbability} percent. AI recommends switching to ${recommendation.betterMarket} for a safer outcome.`;
+    }
+  };
+
+  const speakText = (text) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+
+    const script = text || getSpeechScript();
+    const utterance = new SpeechSynthesisUtterance(script);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.05;
+
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Online') || v.name.includes('Samantha')));
+    if (englishVoice) utterance.voice = englishVoice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Auto-speak when market selection changes if autoVoiceEnabled is true
+  useEffect(() => {
+    if (autoVoiceEnabled && activeSelection?.marketName) {
+      speakText();
+    }
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [activeSelection?.marketName, fixture?.homeTeam]);
+
   return (
     <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-xl border border-slate-800 p-4 shadow-xl space-y-3 relative overflow-hidden select-none">
       {/* Glow highlight based on status */}
@@ -96,8 +152,11 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-100 tracking-wide uppercase">AI Bet Analysis Advisor</h4>
-            <p className="text-[10px] text-slate-400">Selected Bet Evaluation & AI Recommendation</p>
+            <h4 className="text-xs font-bold text-slate-100 tracking-wide uppercase flex items-center gap-1.5">
+              <span>AI Bet Analysis Advisor</span>
+              {isSpeaking && <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />}
+            </h4>
+            <p className="text-[10px] text-slate-400">Voice Analysis & Risk Communication Engine</p>
           </div>
         </div>
 
@@ -117,6 +176,35 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
             {betStatus === 'BAD' ? 'BAD BET ⚠️' : betStatus === 'UNDER_PROBABILITY' ? 'UNDER PROBABILITY ⚡' : 'GOOD BET ✅'}
           </span>
         </span>
+      </div>
+
+      {/* Voice Assistant Communication Control Banner */}
+      <div className="bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 border border-cyan-500/30 p-2.5 rounded-xl flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => isSpeaking ? stopSpeaking() : speakText()}
+            className={`px-3 py-1.5 rounded-lg font-extrabold text-xs flex items-center gap-1.5 transition-all shadow ${
+              isSpeaking
+                ? 'bg-rose-500 text-white animate-pulse'
+                : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30'
+            }`}
+          >
+            {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span>{isSpeaking ? 'Stop Voice' : '🔊 Speak Analysis Aloud'}</span>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setAutoVoiceEnabled(!autoVoiceEnabled)}
+          className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors ${
+            autoVoiceEnabled 
+              ? 'bg-emerald-950 text-emerald-300 border-emerald-800/60' 
+              : 'bg-slate-900 text-slate-500 border-slate-800'
+          }`}
+          title="Toggle automatic speech synthesis when market changes"
+        >
+          Auto-Speak: {autoVoiceEnabled ? 'ON ✅' : 'OFF 🔇'}
+        </button>
       </div>
 
       {/* Active Selection Banner */}
@@ -208,7 +296,10 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
 
           {onApplyRecommendation && (
             <button
-              onClick={() => onApplyRecommendation(recommendation)}
+              onClick={() => {
+                onApplyRecommendation(recommendation);
+                speakText(`Switched selection to AI recommended pick: ${recommendation.betterMarket} with ${recommendation.betterProb} percent win probability.`);
+              }}
               className="w-full mt-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-xs py-2 rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
             >
               <TrendingUp className="w-4 h-4 fill-slate-950" />
@@ -220,4 +311,5 @@ export default function SelectedOddsRecommendationCard({ selectedMarket, fixture
     </div>
   );
 }
+
 
