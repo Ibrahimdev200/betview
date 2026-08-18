@@ -245,25 +245,14 @@ export default function App() {
 
       {/* 4. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Bet Site Display Area / Browser Viewport */}
+        {/* Actual Live Bet Site Display Area */}
         <div className="flex-1 h-full relative bg-slate-900 overflow-hidden flex flex-col">
-          {typeof window !== 'undefined' && (navigator.userAgent.toLowerCase().includes('electron') || window.process?.versions?.electron) ? (
-            <webview
-              ref={webviewRef}
-              src={currentUrl}
-              partition="persist:betlens_session"
-              preload={window.betlens?.webviewPreloadPath || ''}
-              className="w-full h-full border-none"
-              allowpopups="true"
-            />
-          ) : (
-            <BetSiteDisplay
-              currentUrl={currentUrl}
-              onSelectSiteUrl={handleNavigate}
-              onSelectBet={handleSelectFixtureAndMarket}
-              onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
-            />
-          )}
+          <BetSiteDisplay
+            currentUrl={currentUrl}
+            onSelectSiteUrl={handleNavigate}
+            onSelectBet={handleSelectFixtureAndMarket}
+            onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
+          />
         </div>
 
         {/* Real-time Analytics Side Panel */}
