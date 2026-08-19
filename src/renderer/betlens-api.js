@@ -1,4 +1,5 @@
-// BetLens Universal API Bridge (Supports Desktop Electron IPC & Web/Vercel Fallback)
+import apiFootballService from './api-football-service';
+import predictionEngine from '../services/prediction-engine';
 
 const LOCAL_USERS_KEY = 'betlens_web_users_db';
 const LOCAL_NOTIFS_KEY = 'betlens_web_notifications_db';
@@ -71,29 +72,44 @@ const betlensApi = {
     return () => {};
   },
 
-  fetchFixtureAnalytics: async (homeTeam, awayTeam, league) => {
-    if (nativeBetlens && nativeBetlens.fetchFixtureAnalytics) {
-      try {
-        return await nativeBetlens.fetchFixtureAnalytics(homeTeam, awayTeam, league);
-      } catch (e) {}
+  fetchFixtureAnalytics: async (matchArg, awayTeam, league, onProgress) => {
+    try {
+      let matchObj = matchArg;
+      if (typeof matchArg === 'string') {
+        matchObj = {
+          id: `custom-${matchArg}-${awayTeam}`,
+          homeTeam: { id: 101, name: matchArg },
+          awayTeam: { id: 102, name: awayTeam },
+          league: { id: 39, name: league || 'Premier League' },
+          date: new Date().toISOString(),
+          odds: { home: 1.85, draw: 3.40, away: 2.90, over25: 1.75, btts: 1.65, dc1x: 1.22 }
+        };
+      }
+
+      // Execute full data pipeline
+      const statsPayload = await apiFootballService.getCompleteMatchAnalysisData(matchObj, onProgress);
+      
+      // Calculate predictions
+      const prediction = predictionEngine.predict(
+        statsPayload.fixture.homeTeam,
+        statsPayload.fixture.awayTeam,
+        statsPayload.h2h,
+        statsPayload.homeForm,
+        statsPayload.awayForm,
+        statsPayload.odds,
+        statsPayload.homeSplit,
+        statsPayload.awaySplit,
+        statsPayload.squadNews
+      );
+
+      return {
+        ...statsPayload,
+        prediction
+      };
+    } catch (e) {
+      console.error('[BetLens API] Fetch analytics error:', e);
+      throw e;
     }
-    // Web fallback calculation
-    return {
-      homeTeam,
-      awayTeam,
-      league: league || 'Premier League',
-      matchTime: 'Today 20:00',
-      winDrawLoss: { homeWinProb: 55, drawProb: 25, awayWinProb: 20 },
-      expectedGoals: { homeXg: 1.85, awayXg: 0.95 },
-      bttsProbability: 62,
-      topScorelines: [
-        { score: '2 - 0', probability: 18.5 },
-        { score: '2 - 1', probability: 15.2 },
-        { score: '1 - 0', probability: 12.8 },
-        { score: '1 - 1', probability: 10.4 }
-      ],
-      aiConfidence: 84
-    };
   },
 
   getBookingHistory: async () => {

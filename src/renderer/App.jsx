@@ -14,8 +14,12 @@ import betlensApi from './betlens-api';
 
 export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://www.sportybet.com/ng/');
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState('Loading fixture data...');
+  const [analysisError, setAnalysisError] = useState(null);
   
   const [latestBet, setLatestBet] = useState(null);
   const [bookedBetsHistory, setBookedBetsHistory] = useState([]);
@@ -36,6 +40,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const webviewRef = useRef(null);
+  const activeRequestIdRef = useRef(0);
 
   // Initial load & IPC listeners
   useEffect(() => {
@@ -54,6 +59,9 @@ export default function App() {
     const unsubscribeFixture = betlensApi.onFixtureDetected((analytics) => {
       console.log('[BetLens Renderer] Fixture analytics received:', analytics);
       setAnalyticsData(analytics);
+      if (analytics?.fixture?.id) {
+        setSelectedMatchId(analytics.fixture.id);
+      }
       setIsLoadingAnalytics(false);
       setIsSidebarOpen(true);
     });
@@ -66,44 +74,54 @@ export default function App() {
       betlensApi.copyToClipboard(savedBet.code);
     });
 
-    // Initial demo analytics load
-    setIsLoadingAnalytics(true);
-    betlensApi.fetchFixtureAnalytics('Arsenal', 'Chelsea', 'Premier League')
-      .then(analytics => {
-        setAnalyticsData({
-          ...analytics,
-          selectedMarket: {
-            marketName: 'Arsenal Win (1)',
-            odds: 1.85,
-            type: 'home'
-          }
-        });
-        setIsLoadingAnalytics(false);
-      });
-
     return () => {
       if (typeof unsubscribeFixture === 'function') unsubscribeFixture();
       if (typeof unsubscribeBooking === 'function') unsubscribeBooking();
     };
   }, []);
 
-  const handleSelectFixtureAndMarket = async (fixture, marketName, oddsVal, marketType) => {
+  const handleSelectMatch = async (match, marketName, oddsVal, marketType) => {
+    if (!match) return;
+
+    const fixtureId = match.id || match.fixture?.id;
+    setSelectedMatch(match);
+    setSelectedMatchId(fixtureId);
     setIsLoadingAnalytics(true);
+    setAnalysisError(null);
     setIsSidebarOpen(true);
+    setAnalysisStep('Loading fixture data...');
+
+    const requestId = ++activeRequestIdRef.current;
+
+    const homeName = match.homeTeam?.name || match.homeTeam || 'Home';
+    const chosenMarket = {
+      marketName: marketName || `${homeName} Win (1)`,
+      odds: oddsVal || match.odds?.home || 1.85,
+      type: marketType || 'home'
+    };
+
     try {
-      const data = await betlensApi.fetchFixtureAnalytics(fixture.homeTeam, fixture.awayTeam, fixture.league);
-      setAnalyticsData({
-        ...data,
-        selectedMarket: {
-          marketName: marketName || `${fixture.homeTeam} Win (1)`,
-          odds: oddsVal || fixture.odds.home,
-          type: marketType || 'home'
+      const data = await betlensApi.fetchFixtureAnalytics(match, null, null, (stepText) => {
+        if (activeRequestIdRef.current === requestId) {
+          setAnalysisStep(stepText);
         }
       });
+
+      if (activeRequestIdRef.current === requestId) {
+        setAnalyticsData({
+          ...data,
+          selectedMarket: chosenMarket
+        });
+      }
     } catch (e) {
-      console.error(e);
+      if (activeRequestIdRef.current === requestId) {
+        console.error('[App] Match analysis error:', e);
+        setAnalysisError(e.message || 'Unable to analyze this match. Detailed statistics could not be retrieved.');
+      }
     } finally {
-      setIsLoadingAnalytics(false);
+      if (activeRequestIdRef.current === requestId) {
+        setIsLoadingAnalytics(false);
+      }
     }
   };
 
@@ -248,7 +266,8 @@ export default function App() {
         {/* API-Football Daily Games & Odds Dashboard Area */}
         <div className="flex-1 h-full relative bg-slate-900 overflow-hidden flex flex-col">
           <DailyFixturesDisplay
-            onSelectBet={handleSelectFixtureAndMarket}
+            selectedMatchId={selectedMatchId}
+            onSelectMatch={handleSelectMatch}
             onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
           />
         </div>
@@ -257,19 +276,19 @@ export default function App() {
         <AnalyticsPanel
           analytics={analyticsData}
           isLoading={isLoadingAnalytics}
+          loadingStep={analysisStep}
+          error={analysisError}
+          selectedMatchId={selectedMatchId}
           isOpen={isSidebarOpen}
           onApplyRecommendation={handleApplyRecommendation}
           onRefresh={() => {
-            if (analyticsData?.fixture) {
-              setIsLoadingAnalytics(true);
-              window.betlens.fetchFixtureAnalytics(
-                analyticsData.fixture.homeTeam,
-                analyticsData.fixture.awayTeam,
-                analyticsData.fixture.league
-              ).then(data => {
-                setAnalyticsData(data);
-                setIsLoadingAnalytics(false);
-              });
+            if (selectedMatch) {
+              handleSelectMatch(
+                selectedMatch,
+                analyticsData?.selectedMarket?.marketName,
+                analyticsData?.selectedMarket?.odds,
+                analyticsData?.selectedMarket?.type
+              );
             }
           }}
         />

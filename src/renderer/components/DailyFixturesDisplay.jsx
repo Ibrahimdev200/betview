@@ -3,6 +3,8 @@ import { Calendar, Search, Activity, Sparkles, RefreshCw, Trophy, ShieldCheck, F
 import apiFootballService from '../api-football-service';
 
 export default function DailyFixturesDisplay({ 
+  selectedMatchId,
+  onSelectMatch,
   onSelectBet, 
   onOpenOddsGenerator 
 }) {
@@ -34,6 +36,24 @@ export default function DailyFixturesDisplay({
       setFixtures(list || []);
       setIsLoading(false);
     });
+  };
+
+  const handleMatchSelection = (fix, marketName, oddsVal, marketType) => {
+    const homeName = fix.homeTeam?.name || fix.homeTeam;
+    const defaultMarketName = marketName || `${homeName} Win (1)`;
+    const defaultOdds = oddsVal || fix.odds?.home;
+    const defaultType = marketType || 'home';
+
+    if (typeof onSelectMatch === 'function') {
+      onSelectMatch(fix, defaultMarketName, defaultOdds, defaultType);
+    } else if (typeof onSelectBet === 'function') {
+      onSelectBet(
+        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
+        defaultMarketName,
+        defaultOdds,
+        defaultType
+      );
+    }
   };
 
   // Dates helper: Yesterday, Today, Tomorrow
@@ -84,7 +104,7 @@ export default function DailyFixturesDisplay({
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-1 max-w-xl">
-              Real-time daily fixtures powered by <strong className="text-cyan-400">v3.football.api-sports.io</strong>. Click ANY game or odds button below to evaluate win probability in the side panel!
+              Real-time daily fixtures powered by <strong className="text-cyan-400">v3.football.api-sports.io</strong>. Click ANY match card or odds button below to evaluate win probability in real-time!
             </p>
           </div>
         </div>
@@ -198,7 +218,7 @@ export default function DailyFixturesDisplay({
             <span>Daily Match List ({filteredFixtures.length} Games)</span>
           </h4>
           <span className="text-[11px] text-slate-500 font-mono">
-            Click any market button to run AI probability advisor
+            Click match card to trigger BetLens analysis
           </span>
         </div>
 
@@ -218,22 +238,28 @@ export default function DailyFixturesDisplay({
             {filteredFixtures.map((fix) => {
               const kickoffTimeStr = new Date(fix.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const isLive = fix.status === '1H' || fix.status === '2H' || fix.status === 'HT';
+              const isSelected = selectedMatchId && String(selectedMatchId) === String(fix.id);
 
               return (
                 <div
                   key={fix.id}
-                  className="bg-slate-900/90 border border-slate-800/90 hover:border-cyan-500/50 p-4 rounded-2xl shadow-xl transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 group"
+                  onClick={() => handleMatchSelection(fix)}
+                  className={`p-4 rounded-2xl transition-all cursor-pointer flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 group relative overflow-hidden ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-slate-900 via-cyan-950/50 to-slate-900 border-2 border-cyan-400 ring-2 ring-cyan-500/40 shadow-2xl shadow-cyan-500/20'
+                      : 'bg-slate-900/90 border border-slate-800/90 hover:border-cyan-500/50 shadow-xl'
+                  }`}
                 >
+                  {/* Selection Indicator Glow */}
+                  {isSelected && (
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 font-black text-[9px] uppercase px-3 py-0.5 rounded-bl-lg tracking-wider font-mono flex items-center gap-1 shadow">
+                      <Sparkles className="w-3 h-3 fill-slate-950" />
+                      <span>ANALYSIS ACTIVE</span>
+                    </div>
+                  )}
+
                   {/* Left: Match Info & Official Team Crests */}
-                  <div 
-                    className="flex items-center gap-4 flex-1 cursor-pointer"
-                    onClick={() => onSelectBet(
-                      { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                      `${fix.homeTeam.name} Win (1)`,
-                      fix.odds.home,
-                      'home'
-                    )}
-                  >
+                  <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
                     {/* League & Kickoff Badge */}
                     <div className="flex flex-col items-center text-center shrink-0 w-24 space-y-1">
                       <span className="text-[10px] font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60 font-mono truncate max-w-full">
@@ -257,7 +283,7 @@ export default function DailyFixturesDisplay({
                     <div className="flex items-center gap-3 flex-1">
                       {/* Home Team */}
                       <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="font-extrabold text-sm text-white group-hover:text-cyan-400 transition-colors text-right">
+                        <span className={`font-extrabold text-sm transition-colors text-right ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
                           {fix.homeTeam.name}
                         </span>
                         {fix.homeTeam.logo ? (
@@ -289,7 +315,7 @@ export default function DailyFixturesDisplay({
                             {fix.awayTeam.name.charAt(0)}
                           </div>
                         )}
-                        <span className="font-extrabold text-sm text-white group-hover:text-cyan-400 transition-colors">
+                        <span className={`font-extrabold text-sm transition-colors ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
                           {fix.awayTeam.name}
                         </span>
                       </div>
@@ -297,15 +323,10 @@ export default function DailyFixturesDisplay({
                   </div>
 
                   {/* Right: Interactive Market Odds Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/60">
+                  <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/60" onClick={(e) => e.stopPropagation()}>
                     {/* 1 - Home Win */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        `${fix.homeTeam.name} Win (1)`,
-                        fix.odds.home,
-                        'home'
-                      )}
+                      onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} Win (1)`, fix.odds.home, 'home')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-cyan-950/80 hover:border-cyan-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">1 (Home)</span>
@@ -314,12 +335,7 @@ export default function DailyFixturesDisplay({
 
                     {/* X - Draw */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        'Draw (X)',
-                        fix.odds.draw,
-                        'draw'
-                      )}
+                      onClick={() => handleMatchSelection(fix, 'Draw (X)', fix.odds.draw, 'draw')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-slate-800 hover:border-slate-600 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">X (Draw)</span>
@@ -328,12 +344,7 @@ export default function DailyFixturesDisplay({
 
                     {/* 2 - Away Win */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        `${fix.awayTeam.name} Win (2)`,
-                        fix.odds.away,
-                        'away'
-                      )}
+                      onClick={() => handleMatchSelection(fix, `${fix.awayTeam.name} Win (2)`, fix.odds.away, 'away')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-rose-950/80 hover:border-rose-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">2 (Away)</span>
@@ -342,12 +353,7 @@ export default function DailyFixturesDisplay({
 
                     {/* Over 2.5 */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        'Over 2.5 Goals',
-                        fix.odds.over25,
-                        'over25'
-                      )}
+                      onClick={() => handleMatchSelection(fix, 'Over 2.5 Goals', fix.odds.over25, 'over25')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-amber-950/80 hover:border-amber-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">Over 2.5</span>
@@ -356,12 +362,7 @@ export default function DailyFixturesDisplay({
 
                     {/* BTTS */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        'Both Teams To Score',
-                        fix.odds.btts,
-                        'btts'
-                      )}
+                      onClick={() => handleMatchSelection(fix, 'Both Teams To Score', fix.odds.btts, 'btts')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-emerald-950/80 hover:border-emerald-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">BTTS</span>
@@ -370,12 +371,7 @@ export default function DailyFixturesDisplay({
 
                     {/* 1X - Double Chance */}
                     <button
-                      onClick={() => onSelectBet(
-                        { homeTeam: fix.homeTeam.name, awayTeam: fix.awayTeam.name, league: fix.league.name, odds: fix.odds },
-                        `${fix.homeTeam.name} or Draw (1X)`,
-                        fix.odds.dc1x,
-                        'dc1x'
-                      )}
+                      onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} or Draw (1X)`, fix.odds.dc1x, 'dc1x')}
                       className="flex-1 lg:flex-none bg-slate-950 hover:bg-indigo-950/80 hover:border-indigo-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
                     >
                       <span className="text-[10px] text-slate-400 font-mono block">1X (Safe)</span>

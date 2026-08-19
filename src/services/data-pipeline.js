@@ -10,14 +10,14 @@ class DataPipeline {
     
     // 1. Check local SQLite storage cache first
     const cached = db.getFixtureAnalytics(cacheKey);
-    if (cached) {
+    if (cached && cached.prediction?.verdict) {
       console.log('[DataPipeline] Returning SQLite cached data for:', cacheKey);
       return cached;
     }
 
     console.log('[DataPipeline] Generating fresh analytical pipeline for:', homeTeam, 'vs', awayTeam);
 
-    // 2. Build or Fetch Statistics (Form, H2H, Standings, Squad News)
+    // 2. Build or Fetch Statistics
     const stats = this.generateFixtureStats(homeTeam, awayTeam, league);
 
     // 3. Compute Prediction Engine Model Output
@@ -27,7 +27,10 @@ class DataPipeline {
       stats.h2h,
       stats.homeForm,
       stats.awayForm,
-      odds || stats.odds
+      odds || stats.odds,
+      stats.homeAwaySplits?.homeTeamHomeRecord,
+      stats.homeAwaySplits?.awayTeamAwayRecord,
+      stats.squadNews
     );
 
     const fullAnalytics = {
@@ -50,16 +53,16 @@ class DataPipeline {
     };
 
     // 4. Save to SQLite Cache
-    db.saveFixtureAnalytics(cacheKey, fullAnalytics);
+    try {
+      db.saveFixtureAnalytics(cacheKey, fullAnalytics);
+    } catch (e) {
+      console.warn('[DataPipeline] Could not save to SQLite cache:', e.message);
+    }
 
     return fullAnalytics;
   }
 
-  /**
-   * Helper to derive realistic stats & form data based on team names
-   */
   generateFixtureStats(homeTeam, awayTeam, league) {
-    // Generate deterministic hash from team names for realistic consistency
     const hash = (str) => {
       let h = 0;
       for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
@@ -69,20 +72,25 @@ class DataPipeline {
     const homeHash = hash(homeTeam);
     const awayHash = hash(awayTeam);
 
-    // Generate Form (Last 5 matches)
     const resultsPool = ['W', 'W', 'D', 'W', 'L', 'W', 'D', 'L', 'W', 'W'];
-    const generateMatches = (teamName, teamHash) => {
+    const generateMatches = (teamHash) => {
       const matches = [];
-      let pts = 0;
+      let won = 0, drawn = 0, lost = 0, gf = 0, ga = 0, cs = 0, fts = 0;
       for (let i = 0; i < 5; i++) {
         const res = resultsPool[(teamHash + i) % resultsPool.length];
         const teamScore = res === 'W' ? 2 + (i % 2) : res === 'D' ? 1 : 0;
         const oppScore = res === 'W' ? 0 + (i % 2) : res === 'D' ? 1 : 2 + (i % 2);
-        pts += res === 'W' ? 3 : res === 'D' ? 1 : 0;
+        gf += teamScore;
+        ga += oppScore;
+        if (oppScore === 0) cs++;
+        if (teamScore === 0) fts++;
+        if (res === 'W') won++;
+        else if (res === 'D') drawn++;
+        else lost++;
 
         matches.push({
           id: i + 1,
-          result: res, // 'W', 'D', 'L'
+          result: res,
           opponent: `Opponent ${i + 1}`,
           teamScore,
           oppScore,
@@ -90,14 +98,27 @@ class DataPipeline {
           isHome: i % 2 === 0
         });
       }
-      return { matches, pts };
+      return {
+        matches,
+        played: 5,
+        won,
+        drawn,
+        lost,
+        goalsFor: gf,
+        goalsAgainst: ga,
+        avgGoalsFor: (gf / 5).toFixed(1),
+        avgGoalsAgainst: (ga / 5).toFixed(1),
+        cleanSheets: cs,
+        failedToScore: fts,
+        cleanSheetPct: Math.round((cs / 5) * 100),
+        failedToScorePct: Math.round((fts / 5) * 100)
+      };
     };
 
-    const homeForm = generateMatches(homeTeam, homeHash);
-    const awayForm = generateMatches(awayTeam, awayHash);
+    const homeForm = generateMatches(homeHash);
+    const awayForm = generateMatches(awayHash);
 
-    // Generate H2H History (Last 5 meetings)
-    const h2h = [
+    const h2hMatches = [
       { date: '2025-11-12', homeScore: 2, awayScore: 1, winner: 'home', venue: `${homeTeam} Stadium` },
       { date: '2025-04-20', homeScore: 1, awayScore: 1, winner: 'draw', venue: `${awayTeam} Arena` },
       { date: '2024-12-05', homeScore: 3, awayScore: 0, winner: 'home', venue: `${homeTeam} Stadium` },
@@ -105,7 +126,18 @@ class DataPipeline {
       { date: '2023-10-28', homeScore: 2, awayScore: 2, winner: 'draw', venue: `${homeTeam} Stadium` }
     ];
 
-    // Standings
+    const h2h = {
+      sampleSize: h2hMatches.length,
+      homeWins: 2,
+      awayWins: 1,
+      draws: 2,
+      bttsCount: 4,
+      over15Count: 4,
+      over25Count: 3,
+      avgGoals: '2.4',
+      matches: h2hMatches
+    };
+
     const homeRank = (homeHash % 8) + 1;
     const awayRank = (awayHash % 12) + 3;
 
@@ -114,25 +146,15 @@ class DataPipeline {
       away: { rank: awayRank, points: 58 - awayRank * 3, played: 28, won: 15 - awayRank, drawn: 6, lost: 7 + awayRank, gf: 44, ga: 32 }
     };
 
-    // Home / Away Splits
     const homeAwaySplits = {
       homeTeamHomeRecord: { won: 10, drawn: 2, lost: 2, goalsFor: 30, goalsAgainst: 11 },
       awayTeamAwayRecord: { won: 6, drawn: 4, lost: 4, goalsFor: 21, goalsAgainst: 18 }
     };
 
-    // Squad & Injury News
     const squadNews = {
-      home: [
-        { player: 'Key Striker', status: 'Fit', note: 'Scored 4 goals in last 3 games' },
-        { player: 'Starting CB', status: 'Doubtful', note: 'Knock sustained in training' }
-      ],
-      away: [
-        { player: 'Midfield Playmaker', status: 'Suspended', note: 'Accumulated yellow cards' },
-        { player: 'Winger', status: 'Injured', note: 'Hamstring strain (Out 2 wks)' }
-      ]
+      notice: 'Player availability data is not available from the current data source.'
     };
 
-    // Default Bookmaker Odds
     const odds = {
       home: parseFloat((1.65 + (homeRank * 0.1)).toFixed(2)),
       draw: 3.55,

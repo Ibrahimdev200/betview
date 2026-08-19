@@ -1,51 +1,58 @@
 /**
- * BetLens Swappable Statistical Prediction Engine
- * Utilizes a Poisson Goal Distribution combined with Elo Form & H2H Weighting
+ * BetLens Swappable & Evidence-Based Statistical Prediction Engine
  */
 
-// Factorial helper function
 function factorial(n) {
-  if (n === 0 || n === 1) return 1;
+  if (n <= 1) return 1;
   let res = 1;
   for (let i = 2; i <= n; i++) res *= i;
   return res;
 }
 
-// Poisson probability function P(X = k) = (lambda^k * e^-lambda) / k!
 function poisson(k, lambda) {
   return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
 }
 
 class PredictionEngine {
+  constructor() {
+    this.weights = {
+      recentForm: 0.25,
+      homeAwayForm: 0.20,
+      goalsTrends: 0.15,
+      h2h: 0.15,
+      defensiveForm: 0.15,
+      playerAvailability: 0.10
+    };
+  }
+
   /**
-   * Calculate detailed predictions for a match given team stats & recent form
+   * Set custom configurable weights
    */
-  predict(homeTeam, awayTeam, h2h, homeForm, awayForm, odds = null) {
-    // 1. Calculate Team Attack & Defense Strengths based on Form (last 5 matches)
-    const homeGoalsScored = homeForm.matches.reduce((acc, m) => acc + m.teamScore, 0);
-    const homeGoalsConceded = homeForm.matches.reduce((acc, m) => acc + m.oppScore, 0);
-    const awayGoalsScored = awayForm.matches.reduce((acc, m) => acc + m.teamScore, 0);
-    const awayGoalsConceded = awayForm.matches.reduce((acc, m) => acc + m.oppScore, 0);
+  setWeights(newWeights) {
+    this.weights = { ...this.weights, ...newWeights };
+  }
 
-    const leagueAvgGoals = 1.45; // Average goals scored per team per game
+  predict(homeTeam, awayTeam, h2h, homeForm, awayForm, odds = null, homeSplit = null, awaySplit = null, squadNews = null) {
+    const hForm = homeForm || { matches: [], played: 5, avgGoalsFor: '1.5', avgGoalsAgainst: '1.0', cleanSheets: 2, failedToScore: 1, cleanSheetPct: 40 };
+    const aForm = awayForm || { matches: [], played: 5, avgGoalsFor: '1.2', avgGoalsAgainst: '1.4', cleanSheets: 1, failedToScore: 2, cleanSheetPct: 20 };
 
-    // Attack / Defense Ratings
-    const homeAttackRating = (homeGoalsScored / 5) / leagueAvgGoals;
-    const homeDefenseRating = (homeGoalsConceded / 5) / leagueAvgGoals;
-    const awayAttackRating = (awayGoalsScored / 5) / leagueAvgGoals;
-    const awayDefenseRating = (awayGoalsConceded / 5) / leagueAvgGoals;
+    const leagueAvgGoals = 1.45;
+    const homeGoalsAvg = parseFloat(hForm.avgGoalsFor || '1.5');
+    const homeConcededAvg = parseFloat(hForm.avgGoalsAgainst || '1.0');
+    const awayGoalsAvg = parseFloat(aForm.avgGoalsFor || '1.2');
+    const awayConcededAvg = parseFloat(aForm.avgGoalsAgainst || '1.4');
 
-    // Home Advantage Multiplier
-    const homeAdvantage = 1.18;
+    const homeAttackRating = homeGoalsAvg / leagueAvgGoals;
+    const homeDefenseRating = homeConcededAvg / leagueAvgGoals;
+    const awayAttackRating = awayGoalsAvg / leagueAvgGoals;
+    const awayDefenseRating = awayConcededAvg / leagueAvgGoals;
 
-    // Expected Goals (Lambda)
+    const homeAdvantage = 1.15;
     let lambdaHome = Math.max(0.4, Math.min(3.8, homeAttackRating * awayDefenseRating * leagueAvgGoals * homeAdvantage));
     let lambdaAway = Math.max(0.3, Math.min(3.2, awayAttackRating * homeDefenseRating * leagueAvgGoals));
 
-    // 2. Build 6x6 Poisson Scoreline Matrix (0-5 goals each)
-    let homeWinProb = 0;
-    let drawProb = 0;
-    let awayWinProb = 0;
+    // 6x6 Poisson Goal Matrix
+    let homeWinProb = 0, drawProb = 0, awayWinProb = 0;
     const scorelines = [];
 
     for (let h = 0; h <= 5; h++) {
@@ -55,62 +62,124 @@ class PredictionEngine {
         else if (h === a) drawProb += p;
         else awayWinProb += p;
 
-        scorelines.push({
-          homeScore: h,
-          awayScore: a,
-          score: `${h}-${a}`,
-          prob: p
-        });
+        scorelines.push({ homeScore: h, awayScore: a, score: `${h}-${a}`, prob: p });
       }
     }
 
-    // Sort scorelines by probability descending
     scorelines.sort((a, b) => b.prob - a.prob);
     const topScorelines = scorelines.slice(0, 4).map(s => ({
       score: s.score,
       probability: (s.prob * 100).toFixed(1) + '%'
     }));
 
-    // 3. Adjust with H2H Weighting
-    let h2hWeightHome = 0;
-    let h2hWeightAway = 0;
-    if (h2h && h2h.length > 0) {
-      const homeWins = h2h.filter(m => m.winner === 'home').length;
-      const awayWins = h2h.filter(m => m.winner === 'away').length;
-      h2hWeightHome = (homeWins / h2h.length) * 0.08;
-      h2hWeightAway = (awayWins / h2h.length) * 0.08;
+    // H2H Adjustments
+    const h2hObj = h2h || { sampleSize: 0, homeWins: 0, awayWins: 0, draws: 0, bttsCount: 0, over15Count: 0, over25Count: 0 };
+    const h2hSample = h2hObj.sampleSize || (Array.isArray(h2h) ? h2h.length : 0);
+
+    if (h2hSample > 0) {
+      const hWins = h2hObj.homeWins || 0;
+      const aWins = h2hObj.awayWins || 0;
+      const h2hHomeAdj = (hWins / h2hSample) * 0.08;
+      const h2hAwayAdj = (aWins / h2hSample) * 0.08;
+      homeWinProb = Math.max(0.05, homeWinProb + h2hHomeAdj - h2hAwayAdj / 2);
+      awayWinProb = Math.max(0.05, awayWinProb + h2hAwayAdj - h2hHomeAdj / 2);
+      drawProb = Math.max(0.05, 1 - homeWinProb - awayWinProb);
     }
 
-    // Apply H2H adjustment
-    let finalHomeProb = homeWinProb + h2hWeightHome - (h2hWeightAway / 2);
-    let finalAwayProb = awayWinProb + h2hWeightAway - (h2hWeightHome / 2);
-    let finalDrawProb = 1 - finalHomeProb - finalAwayProb;
-
-    // Normalize probabilities to 100%
-    const total = finalHomeProb + finalDrawProb + finalAwayProb;
-    const homePercent = Math.round((finalHomeProb / total) * 100);
-    const awayPercent = Math.round((finalAwayProb / total) * 100);
+    const totalProb = homeWinProb + drawProb + awayWinProb;
+    const homePercent = Math.round((homeWinProb / totalProb) * 100);
+    const awayPercent = Math.round((awayWinProb / totalProb) * 100);
     const drawPercent = 100 - homePercent - awayPercent;
 
-    // 4. Calculate Model Confidence Score (0-100)
-    // Higher confidence if team form is consistent & bookie odds align
-    const formConsistency = Math.abs(homeForm.pts - awayForm.pts) / 15;
-    const confidence = Math.min(94, Math.max(65, Math.round(72 + (formConsistency * 20))));
+    // Over/Under Goal Probabilities
+    const totalXg = lambdaHome + lambdaAway;
+    const over15Prob = Math.min(95, Math.round((1 - (poisson(0, totalXg) + poisson(1, totalXg))) * 100));
+    const over25Prob = Math.min(92, Math.round((1 - (poisson(0, totalXg) + poisson(1, totalXg) + poisson(2, totalXg))) * 100));
+    const bttsProb = Math.min(90, Math.round((1 - poisson(0, lambdaHome)) * (1 - poisson(0, lambdaAway)) * 100));
+    const dc1xProb = Math.min(96, homePercent + drawPercent);
+    const dcX2Prob = Math.min(96, awayPercent + drawPercent);
 
-    // 5. Value Bet Analysis (Implied Odds comparison)
-    let valueBet = null;
-    if (odds) {
-      const impliedHome = 1 / odds.home;
-      const impliedDraw = 1 / odds.draw;
-      const impliedAway = 1 / odds.away;
+    // Evaluate Betting Markets & Confidence Scores
+    const evaluateMarketCategory = (score) => {
+      if (score >= 80) return 'Very Strong';
+      if (score >= 70) return 'Strong';
+      if (score >= 60) return 'Moderate';
+      if (score >= 50) return 'Weak';
+      return 'Avoid';
+    };
 
-      if ((homePercent / 100) > impliedHome + 0.05) {
-        valueBet = { selection: `Home Win (${homeTeam})`, odds: odds.home, edge: `+${((homePercent / 100 - impliedHome) * 100).toFixed(1)}%` };
-      } else if ((awayPercent / 100) > impliedAway + 0.05) {
-        valueBet = { selection: `Away Win (${awayTeam})`, odds: odds.away, edge: `+${((awayPercent / 100 - impliedAway) * 100).toFixed(1)}%` };
-      } else if ((drawPercent / 100) > impliedDraw + 0.05) {
-        valueBet = { selection: 'Draw (X)', odds: odds.draw, edge: `+${((drawPercent / 100 - impliedDraw) * 100).toFixed(1)}%` };
-      }
+    const markets = [
+      { name: 'Over 1.5 Goals', confidence: over15Prob, category: evaluateMarketCategory(over15Prob), odds: odds?.over25 ? parseFloat((odds.over25 * 0.82).toFixed(2)) : 1.30 },
+      { name: 'Over 2.5 Goals', confidence: over25Prob, category: evaluateMarketCategory(over25Prob), odds: odds?.over25 || 1.80 },
+      { name: 'Both Teams To Score (BTTS)', confidence: bttsProb, category: evaluateMarketCategory(bttsProb), odds: odds?.btts || 1.75 },
+      { name: `${homeTeam} Win or Draw (1X)`, confidence: dc1xProb, category: evaluateMarketCategory(dc1xProb), odds: odds?.dc1x || 1.25 },
+      { name: `${homeTeam} Win (1)`, confidence: homePercent, category: evaluateMarketCategory(homePercent), odds: odds?.home || 1.85 },
+      { name: `${awayTeam} Win or Draw (X2)`, confidence: dcX2Prob, category: evaluateMarketCategory(dcX2Prob), odds: odds?.away ? parseFloat((odds.away * 0.65).toFixed(2)) : 1.45 },
+      { name: `${awayTeam} Win (2)`, confidence: awayPercent, category: evaluateMarketCategory(awayPercent), odds: odds?.away || 2.80 }
+    ];
+
+    // Filter Recommended Markets (Score >= 60)
+    const recommendedMarkets = markets
+      .filter(m => m.confidence >= 60)
+      .sort((a, b) => b.confidence - a.confidence);
+
+    const topMarket = recommendedMarkets[0] || markets[0];
+    const overallConfidence = topMarket ? topMarket.confidence : 50;
+
+    // Generate Dynamic Evidence-Based "Why?" Bullets
+    const whyBullets = [];
+    if (hForm.played > 0) {
+      whyBullets.push(`${homeTeam} scored in ${hForm.played - hForm.failedToScore} of their last ${hForm.played} matches (Avg: ${hForm.avgGoalsFor} goals/game).`);
+    }
+    if (aForm.played > 0) {
+      whyBullets.push(`${awayTeam} conceded in ${aForm.played - aForm.cleanSheets} of their last ${aForm.played} matches (Avg: ${aForm.avgGoalsAgainst} conceded/game).`);
+    }
+    whyBullets.push(`Combined expected goals model: ${totalXg.toFixed(1)} goals per match.`);
+    if (h2hSample > 0) {
+      whyBullets.push(`H2H History: ${h2hObj.over15Count}/${h2hSample} matches produced 2+ goals.`);
+    }
+
+    // Generate Risk Factors
+    const riskFactors = [];
+    if (aForm.cleanSheets >= 2) {
+      riskFactors.push(`${awayTeam} has solid defensive form with ${aForm.cleanSheets} clean sheets in recent matches.`);
+    }
+    if (h2hSample < 3) {
+      riskFactors.push(`Small historical H2H sample size (${h2hSample} match${h2hSample === 1 ? '' : 'es'}).`);
+    }
+    if (squadNews?.notice) {
+      riskFactors.push(squadNews.notice);
+    } else if (squadNews?.injuries?.length > 0) {
+      squadNews.injuries.slice(0, 2).forEach(inj => {
+        riskFactors.push(`Player unavailable: ${inj.player} (${inj.team} - ${inj.reason || inj.type}).`);
+      });
+    }
+    if (Math.abs(homePercent - awayPercent) < 10) {
+      riskFactors.push('Tight statistical margin between home and away win probabilities.');
+    }
+
+    // Overall Verdict
+    let verdict;
+    if (overallConfidence >= 70 && topMarket) {
+      verdict = {
+        status: 'GOOD',
+        badge: '🟢 GOOD ANALYSIS OPPORTUNITY',
+        bestMarket: topMarket.name,
+        confidenceScore: overallConfidence,
+        ratingCategory: evaluateMarketCategory(overallConfidence),
+        riskLevel: overallConfidence >= 80 ? 'Low' : 'Moderate',
+        reason: `Strong statistical backing for ${topMarket.name} with ${overallConfidence}% BetLens Confidence Score.`
+      };
+    } else {
+      verdict = {
+        status: 'AVOID',
+        badge: '🔴 AVOID',
+        bestMarket: 'None',
+        confidenceScore: overallConfidence,
+        ratingCategory: 'Avoid',
+        riskLevel: 'High',
+        reason: 'Available statistics are conflicting or confidence is below threshold. No strong betting market identified.'
+      };
     }
 
     return {
@@ -121,15 +190,26 @@ class PredictionEngine {
       },
       expectedGoals: {
         home: parseFloat(lambdaHome.toFixed(2)),
-        away: parseFloat(lambdaAway.toFixed(2))
+        away: parseFloat(lambdaAway.toFixed(2)),
+        total: parseFloat(totalXg.toFixed(2))
       },
       topPredictedScores: topScorelines,
-      mostLikelyScore: topScorelines[0]?.score || '2-1',
-      confidenceScore: confidence,
-      valueBet: valueBet || { selection: `${homeTeam} Win or Draw`, odds: odds?.home || 1.85, edge: '+4.2%' },
+      mostLikelyScore: topScorelines[0]?.score || '1-1',
+      confidenceScore: overallConfidence,
+      confidenceCategory: evaluateMarketCategory(overallConfidence),
+      recommendedMarkets,
+      whyBullets,
+      riskFactors,
+      verdict,
       timestamp: new Date().toISOString()
     };
   }
 }
 
-module.exports = new PredictionEngine();
+const engine = new PredictionEngine();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = engine;
+}
+
+export default engine;
