@@ -35,7 +35,10 @@ export default function BrowserChrome({
   onOpenOddsGenerator,
   onOpenAdmin,
   notificationsCount,
-  onToggleNotifications
+  onToggleNotifications,
+  activeView,
+  onSetView,
+  onOpenSavedTickets
 }) {
   const [inputUrl, setInputUrl] = useState(currentUrl);
 
@@ -87,21 +90,42 @@ export default function BrowserChrome({
         </button>
       </div>
 
-      {/* API-Football Connected Status Bar */}
-      <div className="flex-1 max-w-xl flex items-center">
-        <div className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-1.5 flex items-center justify-between font-mono">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300 font-bold">API-Football v3 Live Engine</span>
-            <span className="text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800/60 hidden sm:inline">
-              v3.football.api-sports.io
-            </span>
-          </div>
+      {/* View Selector Navigation Tabs */}
+      <div className="flex-1 flex items-center justify-center max-w-2xl font-mono">
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            onClick={() => onSetView && onSetView('generator')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeView === 'generator'
+                ? 'bg-cyan-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Ticket Generator</span>
+          </button>
 
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-[10px] text-emerald-400 font-bold">Key Connected</span>
-          </div>
+          <button
+            onClick={() => onSetView && onSetView('matches')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeView === 'matches'
+                ? 'bg-cyan-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>⚽ Daily Matches</span>
+          </button>
+
+          <button
+            onClick={() => onSetView && onSetView('best_fits')}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeView === 'best_fits'
+                ? 'bg-cyan-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🔥 Today's Best Fits</span>
+          </button>
         </div>
       </div>
 
@@ -149,6 +173,15 @@ export default function BrowserChrome({
           title="Booked Bet History"
         >
           <History className="w-4 h-4 text-cyan-400" />
+        </button>
+
+        {/* Saved Tickets & Performance Button */}
+        <button
+          onClick={onOpenSavedTickets}
+          className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-bold text-xs hover:bg-slate-800 transition-colors flex items-center gap-1 font-mono"
+          title="Saved Tickets & Historical Performance"
+        >
+          <span>📜 Track Record</span>
         </button>
 
         {/* User Account / Login Badge */}

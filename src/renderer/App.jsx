@@ -8,12 +8,16 @@ import AuthModal from './components/AuthModal';
 import OddsGeneratorModal from './components/OddsGeneratorModal';
 import AdminDashboardModal from './components/AdminDashboardModal';
 import NotificationDrawer from './components/NotificationDrawer';
-import LandingPage from './components/LandingPage';
 import DailyFixturesDisplay from './components/DailyFixturesDisplay';
+import TicketGeneratorView from './components/TicketGeneratorView';
+import SavedTicketsModal from './components/SavedTicketsModal';
+import DailyBestFitsCard from './components/DailyBestFitsCard';
 import betlensApi from './betlens-api';
+import predictionEngine from '../services/prediction-engine';
 
 export default function App() {
   const [currentUrl, setCurrentUrl] = useState('https://www.sportybet.com/ng/');
+  const [activeView, setActiveView] = useState('generator'); // 'generator', 'matches', 'best_fits'
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -30,6 +34,7 @@ export default function App() {
   // Modals & Drawers State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isSavedTicketsModalOpen, setIsSavedTicketsModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [isOddsModalOpen, setIsOddsModalOpen] = useState(false);
@@ -39,7 +44,6 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  const webviewRef = useRef(null);
   const activeRequestIdRef = useRef(0);
 
   // Initial load & IPC listeners
@@ -55,7 +59,7 @@ export default function App() {
     // 2. Fetch Notifications
     loadNotifications(null);
 
-    // 3. Listen for fixture click detection from webview
+    // 3. Listen for fixture click detection
     const unsubscribeFixture = betlensApi.onFixtureDetected((analytics) => {
       console.log('[BetLens Renderer] Fixture analytics received:', analytics);
       setAnalyticsData(analytics);
@@ -66,17 +70,8 @@ export default function App() {
       setIsSidebarOpen(true);
     });
 
-    // 4. Listen for booking code detection from webview
-    const unsubscribeBooking = betlensApi.onBookingDetected((savedBet) => {
-      console.log('[BetLens Renderer] Booking code detected:', savedBet);
-      setLatestBet(savedBet);
-      setBookedBetsHistory(prev => [savedBet, ...prev.filter(b => b.code !== savedBet.code)]);
-      betlensApi.copyToClipboard(savedBet.code);
-    });
-
     return () => {
       if (typeof unsubscribeFixture === 'function') unsubscribeFixture();
-      if (typeof unsubscribeBooking === 'function') unsubscribeBooking();
     };
   }, []);
 
@@ -89,7 +84,7 @@ export default function App() {
     setIsLoadingAnalytics(true);
     setAnalysisError(null);
     setIsSidebarOpen(true);
-    setAnalysisStep('Loading fixture data...');
+    setAnalysisStep('Fixture information...');
 
     const requestId = ++activeRequestIdRef.current;
 
@@ -97,7 +92,7 @@ export default function App() {
     const chosenMarket = {
       marketName: marketName || `${homeName} Win (1)`,
       odds: oddsVal || match.odds?.home || 1.85,
-      type: marketType || 'home'
+      type: marketType || 'goals_over25'
     };
 
     try {
@@ -152,19 +147,11 @@ export default function App() {
   };
 
   const loadNotifications = (userId) => {
-    betlensApi.getNotifications(userId).then(notifs => {
-      setNotifications(notifs || []);
-    });
-  };
-
-  const handleLoginSuccess = (userProfile) => {
-    setUser(userProfile);
-    loadNotifications(userProfile.id);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    loadNotifications(null);
+    const defaultNotifs = [
+      { id: '1', title: 'BetLens AI Engine Ready', message: 'API-Football data pipeline and Ticket Generator active.', timestamp: 'Just now', read: false },
+      { id: '2', title: 'Top Statistical Fit Found', message: 'Arsenal vs Chelsea has 91/100 Over 1.5 Goal Score.', timestamp: '10m ago', read: false }
+    ];
+    setNotifications(defaultNotifs);
   };
 
   const handleOpenAuth = (mode = 'login') => {
@@ -172,84 +159,31 @@ export default function App() {
     setIsAuthModalOpen(true);
   };
 
-  // Webview navigation helpers
-  const handleNavigate = (url) => {
-    setCurrentUrl(url);
-    if (webviewRef.current) {
-      webviewRef.current.loadURL(url);
-    }
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setIsAuthModalOpen(false);
+    loadNotifications(userData.id || userData.phone);
   };
 
-  const handleGoBack = () => {
-    if (webviewRef.current && webviewRef.current.canGoBack()) {
-      webviewRef.current.goBack();
-    }
-  };
-
-  const handleGoForward = () => {
-    if (webviewRef.current && webviewRef.current.canGoForward()) {
-      webviewRef.current.goForward();
-    }
-  };
-
-  const handleReload = () => {
-    if (webviewRef.current) {
-      webviewRef.current.reload();
-    }
+  const handleLogout = () => {
+    setUser(null);
   };
 
   const handleCopyCode = (code) => {
-    if (window.betlens && window.betlens.copyToClipboard) {
-      window.betlens.copyToClipboard(code);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code);
     }
   };
 
-  // Webview navigation listeners
-  useEffect(() => {
-    const webview = webviewRef.current;
-    if (!webview) return;
-
-    const handleDidNavigate = (e) => {
-      setCurrentUrl(e.url);
-    };
-
-    webview.addEventListener('did-navigate', handleDidNavigate);
-    webview.addEventListener('did-navigate-in-page', handleDidNavigate);
-
-    return () => {
-      webview.removeEventListener('did-navigate', handleDidNavigate);
-      webview.removeEventListener('did-navigate-in-page', handleDidNavigate);
-    };
-  }, []);
-
-  // If user is not logged in, render the Landing Page
-  if (!user) {
-    return (
-      <>
-        <LandingPage onOpenAuth={handleOpenAuth} />
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          onLoginSuccess={handleLoginSuccess}
-          initialMode={authMode}
-        />
-      </>
-    );
-  }
-
-  // Authenticated Dashboard & Desktop Browser Shell
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans relative">
-      {/* 1. Top Navigation Chrome */}
+    <div className="w-screen h-screen bg-slate-950 flex flex-col overflow-hidden font-sans text-slate-100 select-none">
+      {/* 1. Header / Navigation Chrome */}
       <BrowserChrome
         currentUrl={currentUrl}
-        onNavigate={handleNavigate}
-        onGoBack={handleGoBack}
-        onGoForward={handleGoForward}
-        onReload={handleReload}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
+        onOpenSavedTickets={() => setIsSavedTicketsModalOpen(true)}
         bookedBetsCount={bookedBetsHistory.length}
         user={user}
         onOpenAuth={() => handleOpenAuth('login')}
@@ -258,6 +192,8 @@ export default function App() {
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         notificationsCount={notifications.length}
         onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
+        activeView={activeView}
+        onSetView={setActiveView}
       />
 
       {/* 2. Last Booked Bet Banner */}
@@ -277,13 +213,35 @@ export default function App() {
 
       {/* 4. Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* API-Football Daily Games & Odds Dashboard Area */}
+        
+        {/* Main Content Area: Switches between AI Ticket Generator, Daily Matches, and Best Fits */}
         <div className="flex-1 h-full relative bg-slate-900 overflow-hidden flex flex-col">
-          <DailyFixturesDisplay
-            selectedMatchId={selectedMatchId}
-            onSelectMatch={handleSelectMatch}
-            onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
-          />
+          {activeView === 'generator' && (
+            <TicketGeneratorView
+              onSelectMatchForAnalysis={(match) => {
+                handleSelectMatch(match);
+              }}
+            />
+          )}
+
+          {activeView === 'matches' && (
+            <DailyFixturesDisplay
+              selectedMatchId={selectedMatchId}
+              onSelectMatch={handleSelectMatch}
+              onOpenOddsGenerator={() => setIsOddsModalOpen(true)}
+            />
+          )}
+
+          {activeView === 'best_fits' && (
+            <div className="p-6 overflow-y-auto h-full">
+              <DailyBestFitsCard
+                onSelectMatch={(match) => {
+                  handleSelectMatch(match);
+                  setActiveView('matches');
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Real-time Analytics Side Panel */}
@@ -315,6 +273,11 @@ export default function App() {
         onClose={() => setIsHistoryModalOpen(false)}
         history={bookedBetsHistory}
         onCopyCode={handleCopyCode}
+      />
+
+      <SavedTicketsModal
+        isOpen={isSavedTicketsModalOpen}
+        onClose={() => setIsSavedTicketsModalOpen(false)}
       />
 
       <AuthModal
