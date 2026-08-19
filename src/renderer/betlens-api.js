@@ -72,24 +72,25 @@ const betlensApi = {
     return () => {};
   },
 
-  fetchFixtureAnalytics: async (matchArg, awayTeam, league, onProgress) => {
+  fetchFixtureAnalytics: async (matchArg, marketKeyInput, onProgress) => {
     try {
       let matchObj = matchArg;
       if (typeof matchArg === 'string') {
+        const homeName = matchArg;
+        const awayName = typeof marketKeyInput === 'string' ? marketKeyInput : 'Chelsea';
         matchObj = {
-          id: `custom-${matchArg}-${awayTeam}`,
-          homeTeam: { id: 101, name: matchArg },
-          awayTeam: { id: 102, name: awayTeam },
-          league: { id: 39, name: league || 'Premier League' },
+          id: `custom-${homeName}-${awayName}`,
+          homeTeam: { id: 101, name: homeName },
+          awayTeam: { id: 102, name: awayName },
+          league: { id: 39, name: 'Premier League' },
           date: new Date().toISOString(),
           odds: { home: 1.85, draw: 3.40, away: 2.90, over25: 1.75, btts: 1.65, dc1x: 1.22 }
         };
       }
 
-      // Execute full data pipeline
-      const statsPayload = await apiFootballService.getCompleteMatchAnalysisData(matchObj, onProgress);
+      const progressCallback = typeof onProgress === 'function' ? onProgress : (typeof marketKeyInput === 'function' ? marketKeyInput : null);
+      const statsPayload = await apiFootballService.getCompleteMatchAnalysisData(matchObj, progressCallback);
       
-      // Calculate predictions
       const prediction = predictionEngine.predict(
         statsPayload.fixture.homeTeam,
         statsPayload.fixture.awayTeam,
@@ -102,9 +103,13 @@ const betlensApi = {
         statsPayload.squadNews
       );
 
+      const marketKey = (typeof marketKeyInput === 'string' && !marketKeyInput.includes(' ')) ? marketKeyInput : 'goals_over25';
+      const marketAnalysis = predictionEngine.analyzeSpecificMarket(marketKey, statsPayload);
+
       return {
         ...statsPayload,
-        prediction
+        prediction,
+        marketAnalysis
       };
     } catch (e) {
       console.error('[BetLens API] Fetch analytics error:', e);

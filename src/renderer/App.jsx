@@ -101,7 +101,7 @@ export default function App() {
     };
 
     try {
-      const data = await betlensApi.fetchFixtureAnalytics(match, null, null, (stepText) => {
+      const data = await betlensApi.fetchFixtureAnalytics(match, marketType || 'goals_over25', (stepText) => {
         if (activeRequestIdRef.current === requestId) {
           setAnalysisStep(stepText);
         }
@@ -123,6 +123,20 @@ export default function App() {
         setIsLoadingAnalytics(false);
       }
     }
+  };
+
+  const handleSelectMarketKey = (marketKey) => {
+    if (!analyticsData) return;
+    const marketAnalysis = predictionEngine.analyzeSpecificMarket(marketKey, analyticsData);
+    setAnalyticsData(prev => ({
+      ...prev,
+      marketAnalysis,
+      selectedMarket: {
+        marketName: marketAnalysis.marketTitle,
+        odds: marketAnalysis.marketOdds,
+        type: marketKey
+      }
+    }));
   };
 
   const handleApplyRecommendation = (recommendation) => {
@@ -280,6 +294,7 @@ export default function App() {
           error={analysisError}
           selectedMatchId={selectedMatchId}
           isOpen={isSidebarOpen}
+          onSelectMarketKey={handleSelectMarketKey}
           onApplyRecommendation={handleApplyRecommendation}
           onRefresh={() => {
             if (selectedMatch) {
