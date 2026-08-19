@@ -152,7 +152,8 @@ export const apiFootballService = {
    */
   getTeamStatistics: async (teamId, leagueId, season) => {
     if (!teamId || !leagueId) return null;
-    const targetSeason = season || new Date().getFullYear();
+    const currentYear = new Date().getFullYear();
+    const targetSeason = season || currentYear;
     const key = `${teamId}-${leagueId}-${targetSeason}`;
     if (CACHE.teamStats[key]) return CACHE.teamStats[key];
 
@@ -164,15 +165,20 @@ export const apiFootballService = {
       const data = await res.json();
       let statsObj = data.response || null;
 
-      // Fallback to previous season if current season has no played games
-      if ((!statsObj || !statsObj.fixtures?.played?.total) && targetSeason > 2020) {
-        const fallbackRes = await fetch(`${BASE_URL}/teams/statistics?team=${teamId}&league=${leagueId}&season=${targetSeason - 1}`, {
-          method: 'GET',
-          headers: { 'x-apisports-key': API_KEY }
-        });
-        const fallbackData = await fallbackRes.json();
-        if (fallbackData.response?.fixtures?.played?.total) {
-          statsObj = fallbackData.response;
+      // Fallback search across previous seasons if current season has no played games yet
+      if ((!statsObj || !statsObj.fixtures?.played?.total) && targetSeason >= 2020) {
+        for (let y = targetSeason - 1; y >= 2022; y--) {
+          try {
+            const fallbackRes = await fetch(`${BASE_URL}/teams/statistics?team=${teamId}&league=${leagueId}&season=${y}`, {
+              method: 'GET',
+              headers: { 'x-apisports-key': API_KEY }
+            });
+            const fallbackData = await fallbackRes.json();
+            if (fallbackData.response?.fixtures?.played?.total) {
+              statsObj = fallbackData.response;
+              break;
+            }
+          } catch (err) {}
         }
       }
 
@@ -198,7 +204,19 @@ export const apiFootballService = {
         headers: { 'x-apisports-key': API_KEY }
       });
       const data = await res.json();
-      const list = data.response || [];
+      let list = data.response || [];
+
+      // If last=10 returned empty list, try querying previous season fixtures
+      if (list.length === 0) {
+        const prevYear = new Date().getFullYear() - 1;
+        const fallbackRes = await fetch(`${BASE_URL}/fixtures?team=${teamId}&season=${prevYear}`, {
+          method: 'GET',
+          headers: { 'x-apisports-key': API_KEY }
+        });
+        const fallbackData = await fallbackRes.json();
+        list = (fallbackData.response || []).slice(0, last);
+      }
+
       CACHE.recentFixtures[key] = list;
       return list;
     } catch (e) {
@@ -258,11 +276,11 @@ export const apiFootballService = {
     const leagueId = fixtureObj.league.id;
     const season = fixtureObj.league.season || new Date().getFullYear();
 
-    updateProgress('Loading fixture data...');
+    updateProgress('Fixture information...');
     let isPartialData = false;
 
     // Parallel API fetching
-    updateProgress('Loading team statistics & H2H...');
+    updateProgress('Team statistics & Head-to-head...');
     const [h2hRaw, homeStats, awayStats, homeRecentRaw, awayRecentRaw, injuriesRaw] = await Promise.all([
       apiFootballService.getH2H(homeTeamId, awayTeamId).catch(() => []),
       apiFootballService.getTeamStatistics(homeTeamId, leagueId, season).catch(() => null),
@@ -272,15 +290,17 @@ export const apiFootballService = {
       apiFootballService.getInjuries(fixtureId, homeTeamId, awayTeamId).catch(() => [])
     ]);
 
-    updateProgress('Checking recent form...');
+    updateProgress('Recent form & match trends...');
     if (!homeStats && !awayStats && homeRecentRaw.length === 0 && awayRecentRaw.length === 0) {
       isPartialData = true;
     }
 
-    updateProgress('Checking H2H & player availability...');
+    updateProgress('Head-to-head & player data...');
 
-    // Process H2H
-    const h2hMatches = h2hRaw.map(m => ({
+    // Filter H2H to completed matches only
+    const validH2H = h2hRaw.filter(m => m.goals?.home !== null && m.goals?.away !== null);
+
+    const h2hMatches = validH2H.map(m => ({
       date: m.fixture.date?.split('T')[0] || 'Unknown',
       homeScore: m.goals.home ?? 0,
       awayScore: m.goals.away ?? 0,
@@ -326,17 +346,18 @@ export const apiFootballService = {
       matches: h2hMatches
     };
 
-    // Process Recent Form & Scores
+    // Filter recent matches to completed fixtures only (ignore unplayed/postponed)
     const parseMatchesForm = (teamId, recentList) => {
+      const validCompleted = recentList.filter(m => m.goals?.home !== null && m.goals?.away !== null && m.fixture?.status?.short !== 'PST');
       const matches = [];
       let won = 0, drawn = 0, lost = 0;
       let goalsFor = 0, goalsAgainst = 0;
       let cleanSheets = 0, failedToScore = 0;
 
-      recentList.forEach((m, idx) => {
+      validCompleted.forEach((m, idx) => {
         const isHome = m.teams.home.id === teamId;
-        const teamScore = isHome ? (m.goals.home ?? 0) : (m.goals.away ?? 0);
-        const oppScore = isHome ? (m.goals.away ?? 0) : (m.goals.home ?? 0);
+        const teamScore = isHome ? m.goals.home : m.goals.away;
+        const oppScore = isHome ? m.goals.away : m.goals.home;
         const oppName = isHome ? m.teams.away.name : m.teams.home.name;
 
         goalsFor += teamScore;
@@ -360,10 +381,10 @@ export const apiFootballService = {
         });
       });
 
-      const total = recentList.length || 1;
+      const total = validCompleted.length || 1;
       return {
         matches,
-        played: recentList.length,
+        played: validCompleted.length,
         won,
         drawn,
         lost,
@@ -383,13 +404,13 @@ export const apiFootballService = {
 
     // Home / Away Specific Performance
     const homeSplit = homeStats?.fixtures ? {
-      played: homeStats.fixtures.played?.home || 0,
-      won: homeStats.fixtures.wins?.home || 0,
-      drawn: homeStats.fixtures.draws?.home || 0,
-      lost: homeStats.fixtures.loses?.home || 0,
-      goalsFor: homeStats.goals?.for?.total?.home || 0,
-      goalsAgainst: homeStats.goals?.against?.total?.home || 0,
-      avgGoalsFor: homeStats.goals?.for?.average?.home || '0.0'
+      played: homeStats.fixtures.played?.home || homeForm.played,
+      won: homeStats.fixtures.wins?.home || homeForm.won,
+      drawn: homeStats.fixtures.draws?.home || homeForm.drawn,
+      lost: homeStats.fixtures.loses?.home || homeForm.lost,
+      goalsFor: homeStats.goals?.for?.total?.home || homeForm.goalsFor,
+      goalsAgainst: homeStats.goals?.against?.total?.home || homeForm.goalsAgainst,
+      avgGoalsFor: homeStats.goals?.for?.average?.home || homeForm.avgGoalsFor
     } : {
       played: homeForm.played,
       won: homeForm.won,
@@ -401,13 +422,13 @@ export const apiFootballService = {
     };
 
     const awaySplit = awayStats?.fixtures ? {
-      played: awayStats.fixtures.played?.away || 0,
-      won: awayStats.fixtures.wins?.away || 0,
-      drawn: awayStats.fixtures.draws?.away || 0,
-      lost: awayStats.fixtures.loses?.away || 0,
-      goalsFor: awayStats.goals?.for?.total?.away || 0,
-      goalsAgainst: awayStats.goals?.against?.total?.away || 0,
-      avgGoalsFor: awayStats.goals?.for?.average?.away || '0.0'
+      played: awayStats.fixtures.played?.away || awayForm.played,
+      won: awayStats.fixtures.wins?.away || awayForm.won,
+      drawn: awayStats.fixtures.draws?.away || awayForm.drawn,
+      lost: awayStats.fixtures.loses?.away || awayForm.lost,
+      goalsFor: awayStats.goals?.for?.total?.away || awayForm.goalsFor,
+      goalsAgainst: awayStats.goals?.against?.total?.away || awayForm.goalsAgainst,
+      avgGoalsFor: awayStats.goals?.for?.average?.away || awayForm.avgGoalsFor
     } : {
       played: awayForm.played,
       won: awayForm.won,
@@ -430,7 +451,7 @@ export const apiFootballService = {
       }))
     };
 
-    updateProgress('Calculating BetLens analysis...');
+    updateProgress('Market analysis...');
 
     const resultPayload = {
       fixture: {

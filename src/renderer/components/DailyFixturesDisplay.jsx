@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Search, Activity, Sparkles, RefreshCw, Trophy, ShieldCheck, Flame, Radio, Clock } from 'lucide-react';
+import { Calendar, Search, Activity, Sparkles, RefreshCw, Trophy, ShieldCheck, Radio, Clock, ChevronRight } from 'lucide-react';
 import apiFootballService from '../api-football-service';
 
 export default function DailyFixturesDisplay({ 
@@ -56,7 +56,6 @@ export default function DailyFixturesDisplay({
     }
   };
 
-  // Dates helper: Yesterday, Today, Tomorrow
   const getRelativeDate = (offsetDays) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
@@ -67,7 +66,6 @@ export default function DailyFixturesDisplay({
   const todayStr = getRelativeDate(0);
   const tomorrowStr = getRelativeDate(1);
 
-  // Filter fixtures by search query & league
   const filteredFixtures = fixtures.filter((fix) => {
     const matchesSearch =
       fix.homeTeam.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -79,13 +77,12 @@ export default function DailyFixturesDisplay({
     return matchesSearch && (fix.league.name.toLowerCase().includes(selectedLeague.toLowerCase()));
   });
 
-  // Extract unique popular leagues
   const popularLeagues = ['ALL', 'LIVE', 'Premier League', 'La Liga', 'UEFA Champions League', 'Serie A', 'Bundesliga', 'Ligue 1'];
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-950 relative overflow-y-auto p-4 md:p-6 space-y-5 select-none">
       
-      {/* 1. HEADER HERO BAR: API-FOOTBALL DAILY GAMES */}
+      {/* 1. HEADER HERO BAR */}
       <div className="bg-gradient-to-r from-slate-900 via-cyan-950/60 to-slate-950 border border-cyan-500/30 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xl shrink-0 relative overflow-hidden">
         <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
 
@@ -96,7 +93,7 @@ export default function DailyFixturesDisplay({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-black text-base text-white tracking-wide">
-                Daily Football Games & Live Odds
+                Sportsbook Football Matches & Market Odds
               </h3>
               <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-mono font-bold px-2 py-0.5 rounded border border-cyan-500/40 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-cyan-400" />
@@ -104,7 +101,7 @@ export default function DailyFixturesDisplay({
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-1 max-w-xl">
-              Real-time daily fixtures powered by <strong className="text-cyan-400">v3.football.api-sports.io</strong>. Click ANY match card or odds button below to evaluate win probability in real-time!
+              Real-time daily matches. Click <strong className="text-cyan-400">[Analyze Match]</strong> or any market odds button to evaluate win probability in the side panel.
             </p>
           </div>
         </div>
@@ -131,7 +128,6 @@ export default function DailyFixturesDisplay({
 
       {/* 2. DATE SELECTOR & SEARCH FILTERS */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-slate-900/80 p-3 rounded-2xl border border-slate-800/80 shadow-lg">
-        {/* Date Selector */}
         <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto p-0.5">
           <span className="text-[11px] font-mono text-slate-400 font-bold px-2 shrink-0 flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-cyan-400" />
@@ -179,7 +175,6 @@ export default function DailyFixturesDisplay({
           />
         </div>
 
-        {/* Search Input */}
         <div className="relative w-full md:w-64">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
           <input
@@ -210,15 +205,15 @@ export default function DailyFixturesDisplay({
         ))}
       </div>
 
-      {/* 4. FIXTURES GRID & MATCH CARDS */}
+      {/* 4. FIXTURES GRID & BOOKMAKER MATCH CARDS */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-2 font-mono">
             <Activity className="w-4 h-4 text-cyan-400" />
-            <span>Daily Match List ({filteredFixtures.length} Games)</span>
+            <span>Football Matches ({filteredFixtures.length} Games)</span>
           </h4>
           <span className="text-[11px] text-slate-500 font-mono">
-            Click match card to trigger BetLens analysis
+            Click [Analyze Match] or any odds button to open BetLens analysis
           </span>
         </div>
 
@@ -234,7 +229,7 @@ export default function DailyFixturesDisplay({
             <p className="text-xs text-slate-500">No matches found for date {selectedDate} matching your filters.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3.5">
+          <div className="grid grid-cols-1 gap-4">
             {filteredFixtures.map((fix) => {
               const kickoffTimeStr = new Date(fix.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const isLive = fix.status === '1H' || fix.status === '2H' || fix.status === 'HT';
@@ -244,25 +239,16 @@ export default function DailyFixturesDisplay({
                 <div
                   key={fix.id}
                   onClick={() => handleMatchSelection(fix)}
-                  className={`p-4 rounded-2xl transition-all cursor-pointer flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 group relative overflow-hidden ${
+                  className={`p-4.5 rounded-2xl transition-all cursor-pointer flex flex-col space-y-3 group relative overflow-hidden ${
                     isSelected
-                      ? 'bg-gradient-to-r from-slate-900 via-cyan-950/50 to-slate-900 border-2 border-cyan-400 ring-2 ring-cyan-500/40 shadow-2xl shadow-cyan-500/20'
+                      ? 'bg-gradient-to-r from-slate-900 via-cyan-950/60 to-slate-900 border-2 border-cyan-400 ring-2 ring-cyan-500/40 shadow-2xl shadow-cyan-500/20'
                       : 'bg-slate-900/90 border border-slate-800/90 hover:border-cyan-500/50 shadow-xl'
                   }`}
                 >
-                  {/* Selection Indicator Glow */}
-                  {isSelected && (
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-cyan-500 to-blue-600 text-slate-950 font-black text-[9px] uppercase px-3 py-0.5 rounded-bl-lg tracking-wider font-mono flex items-center gap-1 shadow">
-                      <Sparkles className="w-3 h-3 fill-slate-950" />
-                      <span>ANALYSIS ACTIVE</span>
-                    </div>
-                  )}
-
-                  {/* Left: Match Info & Official Team Crests */}
-                  <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
-                    {/* League & Kickoff Badge */}
-                    <div className="flex flex-col items-center text-center shrink-0 w-24 space-y-1">
-                      <span className="text-[10px] font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800/60 font-mono truncate max-w-full">
+                  {/* Top Bar: League Name, Live/Kickoff Time & Analyze CTA */}
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-800/60 pb-2">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="text-[11px] font-bold text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded-lg border border-cyan-800/60 font-mono truncate">
                         {fix.league.name}
                       </span>
 
@@ -272,111 +258,136 @@ export default function DailyFixturesDisplay({
                           LIVE {fix.elapsed}'
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1 shrink-0">
                           <Clock className="w-3 h-3 text-slate-500" />
                           {kickoffTimeStr}
                         </span>
                       )}
                     </div>
 
-                    {/* Team Logos & Match Name */}
-                    <div className="flex items-center gap-3 flex-1">
-                      {/* Home Team */}
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className={`font-extrabold text-sm transition-colors text-right ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
-                          {fix.homeTeam.name}
+                    {/* Primary [Analyze Match] CTA Button */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isSelected && (
+                        <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-2 py-0.5 rounded border border-cyan-500/40 font-mono hidden sm:inline-block">
+                          ✓ Selected
                         </span>
-                        {fix.homeTeam.logo ? (
-                          <img src={fix.homeTeam.logo} alt={fix.homeTeam.name} className="w-6 h-6 object-contain shrink-0" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">
-                            {fix.homeTeam.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Score / VS Badge */}
-                      <div className="bg-slate-950 border border-slate-800 px-3 py-1 rounded-xl text-center shrink-0">
-                        {fix.goals.home !== null ? (
-                          <span className="font-black text-sm text-emerald-400 font-mono">
-                            {fix.goals.home} - {fix.goals.away}
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold text-slate-500 font-mono">VS</span>
-                        )}
-                      </div>
-
-                      {/* Away Team */}
-                      <div className="flex items-center gap-2 flex-1 justify-start">
-                        {fix.awayTeam.logo ? (
-                          <img src={fix.awayTeam.logo} alt={fix.awayTeam.name} className="w-6 h-6 object-contain shrink-0" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">
-                            {fix.awayTeam.name.charAt(0)}
-                          </div>
-                        )}
-                        <span className={`font-extrabold text-sm transition-colors ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
-                          {fix.awayTeam.name}
-                        </span>
-                      </div>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMatchSelection(fix);
+                        }}
+                        className={`px-3 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow font-mono ${
+                          isSelected
+                            ? 'bg-cyan-500 text-slate-950 hover:bg-cyan-400'
+                            : 'bg-slate-800 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-950 hover:text-cyan-300'
+                        }`}
+                      >
+                        <span>Analyze</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Right: Interactive Market Odds Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-800/60" onClick={(e) => e.stopPropagation()}>
-                    {/* 1 - Home Win */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} Win (1)`, fix.odds.home, 'home')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-cyan-950/80 hover:border-cyan-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">1 (Home)</span>
-                      <span className="text-xs font-extrabold text-cyan-400 font-mono">@{fix.odds.home}</span>
-                    </button>
+                  {/* Middle Row: Teams & Crests & Score */}
+                  <div className="flex items-center justify-between gap-4 py-1">
+                    {/* Home Team */}
+                    <div className="flex items-center gap-3 flex-1 justify-end">
+                      <span className={`font-extrabold text-sm md:text-base transition-colors text-right truncate ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
+                        {fix.homeTeam.name}
+                      </span>
+                      {fix.homeTeam.logo ? (
+                        <img src={fix.homeTeam.logo} alt={fix.homeTeam.name} className="w-7 h-7 object-contain shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
+                          {fix.homeTeam.name.charAt(0)}
+                        </div>
+                      )}
+                    </div>
 
-                    {/* X - Draw */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, 'Draw (X)', fix.odds.draw, 'draw')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-slate-800 hover:border-slate-600 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">X (Draw)</span>
-                      <span className="text-xs font-extrabold text-slate-200 font-mono">@{fix.odds.draw}</span>
-                    </button>
+                    {/* VS / Score Badge */}
+                    <div className="bg-slate-950 border border-slate-800 px-3 py-1 rounded-xl text-center shrink-0 shadow-inner">
+                      {fix.goals.home !== null ? (
+                        <span className="font-black text-sm md:text-base text-emerald-400 font-mono">
+                          {fix.goals.home} - {fix.goals.away}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-black text-slate-400 font-mono">VS</span>
+                      )}
+                    </div>
 
-                    {/* 2 - Away Win */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, `${fix.awayTeam.name} Win (2)`, fix.odds.away, 'away')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-rose-950/80 hover:border-rose-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">2 (Away)</span>
-                      <span className="text-xs font-extrabold text-rose-400 font-mono">@{fix.odds.away}</span>
-                    </button>
+                    {/* Away Team */}
+                    <div className="flex items-center gap-3 flex-1 justify-start">
+                      {fix.awayTeam.logo ? (
+                        <img src={fix.awayTeam.logo} alt={fix.awayTeam.name} className="w-7 h-7 object-contain shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
+                          {fix.awayTeam.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className={`font-extrabold text-sm md:text-base transition-colors truncate ${isSelected ? 'text-cyan-300' : 'text-white group-hover:text-cyan-400'}`}>
+                        {fix.awayTeam.name}
+                      </span>
+                    </div>
+                  </div>
 
-                    {/* Over 2.5 */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, 'Over 2.5 Goals', fix.odds.over25, 'over25')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-amber-950/80 hover:border-amber-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">Over 2.5</span>
-                      <span className="text-xs font-extrabold text-amber-400 font-mono">@{fix.odds.over25}</span>
-                    </button>
+                  {/* Bottom Row: Bookmaker Market Odds Grid (6 Columns - Guaranteed Visibility) */}
+                  <div className="pt-2 border-t border-slate-800/80" onClick={(e) => e.stopPropagation()}>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full">
+                      {/* 1 - Home Win */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} Win (1)`, fix.odds.home, 'match_result_home')}
+                        className="bg-slate-950 hover:bg-cyan-950 hover:border-cyan-500/60 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">1 (Home)</span>
+                        <span className="text-xs font-black text-cyan-400 font-mono mt-0.5">@{fix.odds.home}</span>
+                      </button>
 
-                    {/* BTTS */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, 'Both Teams To Score', fix.odds.btts, 'btts')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-emerald-950/80 hover:border-emerald-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">BTTS</span>
-                      <span className="text-xs font-extrabold text-emerald-400 font-mono">@{fix.odds.btts}</span>
-                    </button>
+                      {/* X - Draw */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, 'Draw (X)', fix.odds.draw, 'match_result_draw')}
+                        className="bg-slate-950 hover:bg-slate-800 hover:border-slate-600 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">X (Draw)</span>
+                        <span className="text-xs font-black text-slate-200 font-mono mt-0.5">@{fix.odds.draw}</span>
+                      </button>
 
-                    {/* 1X - Double Chance */}
-                    <button
-                      onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} or Draw (1X)`, fix.odds.dc1x, 'dc1x')}
-                      className="flex-1 lg:flex-none bg-slate-950 hover:bg-indigo-950/80 hover:border-indigo-500/60 border border-slate-800 px-3 py-2 rounded-xl text-center transition-all"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono block">1X (Safe)</span>
-                      <span className="text-xs font-extrabold text-indigo-400 font-mono">@{fix.odds.dc1x}</span>
-                    </button>
+                      {/* 2 - Away Win */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, `${fix.awayTeam.name} Win (2)`, fix.odds.away, 'match_result_away')}
+                        className="bg-slate-950 hover:bg-rose-950 hover:border-rose-500/60 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">2 (Away)</span>
+                        <span className="text-xs font-black text-rose-400 font-mono mt-0.5">@{fix.odds.away}</span>
+                      </button>
+
+                      {/* Over 2.5 */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, 'Over 2.5 Goals', fix.odds.over25, 'goals_over25')}
+                        className="bg-slate-950 hover:bg-amber-950 hover:border-amber-500/60 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">Over 2.5</span>
+                        <span className="text-xs font-black text-amber-400 font-mono mt-0.5">@{fix.odds.over25}</span>
+                      </button>
+
+                      {/* BTTS */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, 'Both Teams To Score', fix.odds.btts, 'btts_yes')}
+                        className="bg-slate-950 hover:bg-emerald-950 hover:border-emerald-500/60 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">BTTS</span>
+                        <span className="text-xs font-black text-emerald-400 font-mono mt-0.5">@{fix.odds.btts}</span>
+                      </button>
+
+                      {/* 1X - Double Chance */}
+                      <button
+                        onClick={() => handleMatchSelection(fix, `${fix.homeTeam.name} or Draw (1X)`, fix.odds.dc1x, 'double_chance_1x')}
+                        className="bg-slate-950 hover:bg-indigo-950 hover:border-indigo-500/60 border border-slate-800 px-2 py-1.5 rounded-xl text-center transition-all flex flex-col items-center justify-center"
+                      >
+                        <span className="text-[9px] text-slate-400 font-mono uppercase block leading-none">1X (Safe)</span>
+                        <span className="text-xs font-black text-indigo-400 font-mono mt-0.5">@{fix.odds.dc1x}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

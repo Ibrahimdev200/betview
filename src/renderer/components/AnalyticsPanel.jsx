@@ -37,7 +37,7 @@ export default function AnalyticsPanel({
       : 3;
 
     return (
-      <aside className="w-[420px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center space-y-6 shadow-2xl z-20 select-none">
+      <aside className="w-full lg:w-[440px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center space-y-6 shadow-2xl z-20 select-none shrink-0">
         <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center relative shadow-xl">
           <div className="w-10 h-10 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin" />
           <Sparkles className="w-5 h-5 text-cyan-400 absolute" />
@@ -77,7 +77,7 @@ export default function AnalyticsPanel({
   // 2. Error State (Requirement 21)
   if (error) {
     return (
-      <aside className="w-[420px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20 select-none">
+      <aside className="w-full lg:w-[440px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20 select-none shrink-0">
         <div className="w-14 h-14 rounded-2xl bg-rose-950/60 border border-rose-800 flex items-center justify-center text-rose-400 shadow-xl">
           <ShieldAlert className="w-7 h-7" />
         </div>
@@ -101,7 +101,7 @@ export default function AnalyticsPanel({
   // 3. No Selection State (Requirement 5)
   if (!analytics || !analytics.fixture) {
     return (
-      <aside className="w-[420px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20 select-none">
+      <aside className="w-full lg:w-[440px] h-full bg-slate-950 border-l border-slate-800 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-2xl z-20 select-none shrink-0">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400 shadow-xl relative">
           <BarChart2 className="w-8 h-8" />
           <MousePointerClick className="w-4 h-4 text-amber-400 absolute -bottom-1 -right-1 animate-bounce" />
@@ -109,7 +109,7 @@ export default function AnalyticsPanel({
         <div className="space-y-2 max-w-[260px]">
           <h4 className="text-sm font-extrabold text-slate-200">Select a match to begin analysis</h4>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Click any match from the sportsbook list to run BetLens analysis.
+            Click any match or odds button from the sportsbook match list to run BetLens analysis.
           </p>
         </div>
       </aside>
@@ -139,7 +139,7 @@ export default function AnalyticsPanel({
   ];
 
   return (
-    <aside className="w-[420px] h-full bg-slate-950 border-l border-slate-800 flex flex-col shadow-2xl z-20 overflow-hidden select-none">
+    <aside className="w-full lg:w-[440px] h-full bg-slate-950 border-l border-slate-800 flex flex-col shadow-2xl z-20 overflow-hidden select-none shrink-0">
       {/* 1. Sidebar Header (Requirement 5) */}
       <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
         <div>
@@ -183,20 +183,20 @@ export default function AnalyticsPanel({
       )}
 
       {/* 2. MARKET SELECTION TABS BAR (Requirement 6 & 7) */}
-      <div className="bg-slate-900 border-b border-slate-800/80 p-2 shrink-0">
+      <div className="bg-slate-900 border-b border-slate-800/80 p-2.5 shrink-0">
         <span className="text-[10px] font-mono text-slate-400 font-bold block mb-1.5 px-1 uppercase tracking-wider flex items-center gap-1">
           <Target className="w-3 h-3 text-cyan-400" />
           <span>Select Market to Analyze:</span>
         </span>
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {activeMarketOptions.map((opt) => (
             <button
               key={opt.key}
               onClick={() => onSelectMarketKey && onSelectMarketKey(opt.key)}
-              className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border shrink-0 font-mono ${
+              className={`text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all border shrink-0 font-mono whitespace-nowrap ${
                 selectedMarketKey === opt.key
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 shadow'
-                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-extrabold shadow-lg shadow-cyan-500/20'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
               }`}
             >
               {opt.label}
